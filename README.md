@@ -10,7 +10,7 @@ A desktop-based **Car Rental Management System** built with **Java** and **MySQL
 |------|----------------|------|
 | Joseph Gabriel A. Roces | @JGR-Dev-Scholar | Quality Engineer |
 | Sean Patrick Brix V. Salamera | @username | Data Engineer |
-| Marvin Karl R. Sangco | @username | SWE - BackEnd |
+| Marvin Karl R. Sangco | @Marvin-Sangco | SWE - BackEnd |
 | Leonard Vincent L. Camat | @username | SWE - FrontEnd |
 
 
