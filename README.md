@@ -4,7 +4,7 @@ A desktop-based **Car Rental Management System** built with **Java** and **MySQL
 
 ---
 
-## 👥 Group Members
+## 👥 Authors
 
 | Name | GitHub Username | Role |
 |------|----------------|------|
