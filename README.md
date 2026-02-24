@@ -13,7 +13,7 @@ A desktop-based **Car Rental Management System** built with **Java** and **MySQL
 | Marvin Karl R. Sangco | @username | SWE - BackEnd |
 | Leonard Vincent L. Camat | @username | SWE - FrontEnd |
 
-> Fill in your names, GitHub usernames, and assigned roles as a group.
+
 
 ---
 
