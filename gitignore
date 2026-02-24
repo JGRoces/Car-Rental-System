@@ -1,0 +1,44 @@
+# ============================================
+#   .gitignore — Car Rental System
+# ============================================
+
+# --- Java Compiled Output ---
+*.class
+*.jar
+*.war
+*.ear
+/out/
+/build/
+/target/
+/bin/
+
+# --- IntelliJ IDEA ---
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# --- Eclipse ---
+.classpath
+.project
+.settings/
+
+# --- NetBeans ---
+nbproject/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# --- Database Credentials ---
+# Never push your DB config with real credentials
+DatabaseConnection.java
+
+# --- JDBC Driver ---
+*.jar
+
+# --- OS Files ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
