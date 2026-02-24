@@ -8,10 +8,10 @@ A desktop-based **Car Rental Management System** built with **Java** and **MySQL
 
 | Name | GitHub Username | Role |
 |------|----------------|------|
-| (Member 1) | @username | |
-| (Member 2) | @username | |
-| (Member 3) | @username | |
-| (Member 4) | @username | |
+| Joseph Gabriel A. Roces | @username | |
+| Sean Patrick Brix V. Salamera | @username | |
+| Marvin Karl R. Sangco | @username | |
+| Leonard Vincent L. Camat | @username | |
 
 > Fill in your names, GitHub usernames, and assigned roles as a group.
 
