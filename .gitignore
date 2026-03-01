@@ -1,16 +1,9 @@
-# Compiled class file
+# ============================================
+#   .gitignore — Car Rental System
+# ============================================
+
+# --- Java Compiled Output ---
 *.class
-
-# Log file
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
 *.nar
@@ -18,7 +11,45 @@
 *.zip
 *.tar.gz
 *.rar
+/out/
+/build/
+/target/
+/bin/
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# --- VSCode ---
+.vscode/
+
+# --- IntelliJ IDEA ---
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# --- Eclipse / NetBeans ---
+.classpath
+.project
+.settings/
+nbproject/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# --- Java Crash Logs ---
 hs_err_pid*
 replay_pid*
+.mtj.tmp/
+
+# --- OS Files ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+
+# --- IMPORTANT: Database Credentials ---
+# Do NOT push real credentials.
+# Keep DatabaseConnection.java in the repo but
+# always use placeholder values before committing:
+#   URL      = "jdbc:mysql://localhost:3306/car_rental_db"
+#   USER     = "your_username"
+#   PASSWORD = "your_password"
