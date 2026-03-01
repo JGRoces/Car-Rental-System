@@ -22,8 +22,8 @@ public class DatabaseConnection {
     // Database Credentials
     // -------------------------
     private static final String URL  = "jdbc:mysql://localhost:3306/car_rental_db";
-    private static final String USER = " ";
-    private static final String PASS = " ";
+    private static final String USER = "";
+    private static final String PASS = "";
 
     // -------------------------
     // Singleton Instance
