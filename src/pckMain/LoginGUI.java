@@ -2,6 +2,13 @@ package pckMain;
 
 import javax.swing.*;
 import javax.swing.border.*;
+
+import pckAdmin.AdminDashboardGUI;
+import pckCustomer.CustomerDashboardGUI;
+import pckModels.User;
+import pckServices.AuthService;
+import pckUtils.SessionManager;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.RoundRectangle2D;
@@ -141,32 +148,11 @@ public class LoginGUI extends JFrame {
         inner.add(Box.createVerticalStrut(40));
 
         // Image placeholder box
-        JPanel imgPlaceholder = new JPanel(new GridBagLayout());
-        imgPlaceholder.setBackground(new Color(32, 32, 32));
-        imgPlaceholder.setBorder(new LineBorder(new Color(45, 45, 45), 1, true));
-        imgPlaceholder.setMaximumSize(new Dimension(Integer.MAX_VALUE, 400));
-        imgPlaceholder.setPreferredSize(new Dimension(560, 400));
-        imgPlaceholder.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JPanel phText = new JPanel();
-        phText.setLayout(new BoxLayout(phText, BoxLayout.Y_AXIS));
-        phText.setBackground(new Color(32, 32, 32));
-
-        JLabel iconLbl = new JLabel("[ IMAGE ]");
-        iconLbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        iconLbl.setForeground(new Color(75, 75, 75));
-        iconLbl.setAlignmentX(Component.CENTER_ALIGNMENT);
-        phText.add(iconLbl);
-        phText.add(Box.createVerticalStrut(8));
-
-        JLabel hintLbl = new JLabel("Car image goes here");
-        hintLbl.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        hintLbl.setForeground(new Color(60, 60, 60));
-        hintLbl.setAlignmentX(Component.CENTER_ALIGNMENT);
-        phText.add(hintLbl);
-
-        imgPlaceholder.add(phText);
-        inner.add(imgPlaceholder);
+        ImageIcon rawImage = new ImageIcon("assets/images/carshowcase.jpg"); // your image path here
+        Image scaledImage = rawImage.getImage().getScaledInstance(560, 400, Image.SCALE_SMOOTH);
+        JLabel imgLabel = new JLabel(new ImageIcon(scaledImage));
+        imgLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        inner.add(imgLabel);
 
         panel.add(inner);
         return panel;
@@ -398,31 +384,41 @@ public class LoginGUI extends JFrame {
         String email    = emailField.getText().trim();
         String password = String.valueOf(passwordField.getPassword());
 
+        // --- Empty field check ---
         if (email.isEmpty() || email.equals("Enter your email") ||
             password.isEmpty() || password.equals("Enter your password")) {
             setStatus("Please fill in all fields.", CLR_RED);
             return;
         }
 
+        // --- Basic email format check ---
         if (!email.contains("@") || !email.contains(".")) {
             setStatus("Please enter a valid email address.", CLR_RED);
             return;
         }
 
-        // -- TODO: Replace with AuthService call once DB layer is ready --
-        // User user = AuthService.login(email, password);
-        // if (user != null) {
-        //     SessionManager.setCurrentUser(user);
-        //     if (user.isAdmin()) new AdminDashboardGUI().setVisible(true);
-        //     else new CustomerDashboardGUI().setVisible(true);
-        //     this.dispose();
-        // } else {
-        //     setStatus("Invalid email or password.", CLR_RED);
-        // }
+        // --- Disable button while processing ---
+        loginButton.setEnabled(false);
+        setStatus("Signing in...", CLR_GRAY);
 
-        setStatus("Login functionality coming soon.", CLR_YELLOW);
+        // --- Attempt login via AuthService ---
+        User user = AuthService.login(email, password);
+
+        if (user != null) {
+            // Login successful — route based on role
+            if (user.isAdmin()) {
+                new AdminDashboardGUI().setVisible(true);
+            } else {
+                new CustomerDashboardGUI().setVisible(true);
+            }
+            this.dispose(); // Close login window
+
+        } else {
+            // Login failed — show error and re-enable button
+            setStatus("Invalid email or password.", CLR_RED);
+            loginButton.setEnabled(true);
+        }
     }
-
     // -------------------------
     // Helpers
     // -------------------------
