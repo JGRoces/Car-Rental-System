@@ -1,0 +1,215 @@
+# 🗄️ Database Setup Guide — Car Rental System
+
+> Follow every step in order. This guide will set up MySQL on your machine so you can run the project locally.
+
+-----
+
+## What You Need to Download First
+
+Before anything else, make sure you have both of these installed:
+
+1. **MySQL Installer** — https://dev.mysql.com/downloads/installer/
+- Download the full installer (`mysql-installer-community-x.x.x.msi`)
+- Choose **Developer Default** during setup
+- This installs both **MySQL Server** and **MySQL Workbench** together
+1. **Java JDK 21** — https://www.oracle.com/java/technologies/downloads/
+- Make sure to get **JDK 21** specifically, not older versions
+
+-----
+
+## Step 1 — Install MySQL
+
+Run the MySQL Installer you downloaded. When it asks for setup type, choose **Developer Default** and click through. The important screen is **Accounts and Roles** — this is where you create your `root` password.
+
+> ⚠️ **Write down your root password.** You will need it every time you open MySQL Workbench. If you forget it, resetting it is painful.
+
+Finish the installation and let it complete all the steps. MySQL Server should start automatically when Windows boots up.
+
+-----
+
+## Step 2 — Open MySQL Workbench and Connect
+
+Open **MySQL Workbench** from your Start Menu. On the home screen you should see a box that says:
+
+```
+Local instance MySQL80
+root
+127.0.0.1:3306
+```
+
+Click that box. It will ask for your root password — enter the one you set during installation. If you see a green checkmark or a query tab opens, you’re connected successfully.
+
+> If the box doesn’t appear, click the **+** icon next to “MySQL Connections” and fill in:
+> 
+> - Connection Name: `CarRentalSystem`
+> - Hostname: `127.0.0.1`
+> - Port: `3306`
+> - Username: `root`
+>   Then click **Test Connection**.
+
+-----
+
+## Step 3 — Create the Project Database User
+
+Once you’re connected, open a new query tab by clicking the **SQL+** icon or pressing `Ctrl + T`. Then copy and paste these three commands and click the ⚡ **Execute All** button:
+
+```sql
+CREATE USER 'carrentaluser'@'localhost' IDENTIFIED BY 'carrentalpass';
+
+GRANT ALL PRIVILEGES ON car_rental_db.* TO 'carrentaluser'@'localhost';
+
+FLUSH PRIVILEGES;
+```
+
+You should see output like this in the Action Output panel at the bottom:
+
+```
+CREATE USER 'carrentaluser'@'localhost' ...   0 row(s) affected
+GRANT ALL PRIVILEGES ON car_rental_db.* ...  0 row(s) affected
+FLUSH PRIVILEGES                             0 row(s) affected, 1 warning(s)
+```
+
+> The warning on FLUSH PRIVILEGES is **normal and harmless**. MySQL 8.0 no longer requires it but it still runs fine.
+
+-----
+
+## Step 4 — Verify the User Was Created
+
+Run this query to confirm both `root` and `carrentaluser` exist:
+
+```sql
+SELECT user, host FROM mysql.user;
+```
+
+You should see at least these two rows in the result:
+
+|user         |host     |
+|-------------|---------|
+|carrentaluser|localhost|
+|root         |localhost|
+
+If `carrentaluser` is in the list, you’re good to move on.
+
+-----
+
+## Step 5 — Run the Database Schema
+
+Now you need to create the actual database and all the tables. You have two options:
+
+### Option A — Open the SQL file directly (Recommended)
+
+1. In MySQL Workbench, go to **File → Open SQL Script**
+1. Navigate to your project folder and open `database/car_rental_db.sql`
+1. Once it loads, press `Ctrl + Shift + Enter` or click **⚡ Execute All**
+
+### Option B — Copy and paste
+
+1. Open the `database/car_rental_db.sql` file in VSCode
+1. Select all (`Ctrl + A`), copy it
+1. Paste it into a new query tab in MySQL Workbench
+1. Click **⚡ Execute All**
+
+After it runs, check the left sidebar under **Schemas**. Click the refresh icon (🔄) if nothing appears. You should see `car_rental_db` with these 5 tables inside:
+
+```
+car_rental_db
+  └── Tables
+        ├── cars
+        ├── customers
+        ├── payments
+        ├── rentals
+        └── users
+```
+
+-----
+
+## Step 6 — Verify the Sample Data
+
+Run these queries one by one to make sure everything loaded correctly:
+
+```sql
+USE car_rental_db;
+
+SELECT * FROM users;
+SELECT * FROM cars;
+SELECT * FROM customers;
+```
+
+**`users` table** should show 2 rows:
+
+|user_id|full_name     |email              |role    |
+|-------|--------------|-------------------|--------|
+|1      |Administrator |admin@carrental.com|ADMIN   |
+|2      |Juan Dela Cruz|juan@email.com     |CUSTOMER|
+
+**`cars` table** should show 5 rows (Toyota Vios, Honda CR-V, etc.)
+
+**`customers` table** should show 1 row linked to Juan Dela Cruz.
+
+If all three look correct, your database is fully set up. ✅
+
+-----
+
+## Step 7 — Add the JDBC Driver to VSCode
+
+The project needs a `.jar` file to connect Java to MySQL. Your group leader should share `mysql-connector-j-9.6.0.jar` through your group chat (it’s in the `lib/` folder of the project).
+
+Once you have the file:
+
+1. Place it inside `CAR-RENTAL-SYSTEM/lib/`
+1. Open VSCode with the project folder
+1. In the left sidebar, look for the **Java Projects** panel
+1. Expand your project → find **Referenced Libraries**
+1. Click the **+** button and select `mysql-connector-j-9.6.0.jar`
+
+-----
+
+## Step 8 — Test the Connection
+
+Open `src/pckMain/Main.java` in VSCode and run it. Check the terminal output at the bottom. You should see:
+
+```
+[DB] Connection established successfully.
+```
+
+If you see that message, everything is working. The Login screen should also appear on your screen.
+
+-----
+
+## ❌ Common Errors and Fixes
+
+### “Communications link failure” or “Connection refused”
+
+MySQL Server is not running. Open **Services** in Windows (search for it in Start Menu), find **MySQL80**, right-click and click **Start**.
+
+### “Access denied for user ‘carrentaluser’”
+
+The user wasn’t created correctly. Go back to Step 3 and run those commands again. Make sure you’re running them while connected as `root`.
+
+### “Unknown database ‘car_rental_db’”
+
+The schema file wasn’t run yet. Go back to Step 5.
+
+### “Class not found: com.mysql.cj.jdbc.Driver”
+
+The JDBC `.jar` file is missing from Referenced Libraries. Go back to Step 7.
+
+### MySQL Workbench connection box is missing
+
+MySQL Server might not have installed correctly. Re-run the MySQL Installer, choose **Reconfigure** on MySQL Server, and go through the setup again.
+
+-----
+
+## ✅ Setup Checklist
+
+Use this to confirm everything is done before you start coding:
+
+- [ ] MySQL Server and Workbench installed
+- [ ] Root password noted and working
+- [ ] `carrentaluser` created successfully (Step 3)
+- [ ] `car_rental_db` schema loaded with all 5 tables (Step 5)
+- [ ] Sample data verified in users and cars tables (Step 6)
+- [ ] `mysql-connector-j-9.6.0.jar` added to VSCode Referenced Libraries (Step 7)
+- [ ] `Main.java` runs and shows `[DB] Connection established successfully.`
+
+Once all boxes are checked, you’re ready to start working on the project! 🚀
