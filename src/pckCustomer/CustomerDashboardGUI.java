@@ -1,10 +1,38 @@
 package pckCustomer;
 
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
-import javax.swing.*;
-import javax.swing.border.*;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.border.MatteBorder;
+
 import pckMain.LoginGUI;
 import pckServices.AuthService;
 import pckUtils.SessionManager;
@@ -75,7 +103,6 @@ public class CustomerDashboardGUI extends JFrame {
         "Make a Reservation",
         "My Rentals",
         "Payment",
-        "Logout"
     };
     private static final String[] NAV_ICONS = {
         "\u229E",
@@ -377,7 +404,7 @@ public class CustomerDashboardGUI extends JFrame {
 
         body.add(buildSectionLabel("My Recent Rentals"));
         body.add(Box.createVerticalStrut(12));
-        body.add(buildRecentRentalsTable());
+        body.add(buildRecentRentalsPlaceholder());
         body.add(Box.createVerticalStrut(28));
 
         body.add(buildSectionLabel("Quick Actions"));
@@ -466,40 +493,39 @@ public class CustomerDashboardGUI extends JFrame {
     }
 
     // ====================================================
-    //  RECENT RENTALS TABLE
+    //  RECENT RENTALS PLACEHOLDER
     // ====================================================
-    private JPanel buildRecentRentalsTable() {
+    private JPanel buildRecentRentalsPlaceholder() {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(CLR_WHITE);
-        wrapper.setBorder(new LineBorder(CLR_BORDER, 1, true));
+        wrapper.setBorder(new LineBorder(CLR_BORDER, 1, false));
         wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
         wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        String[] cols = { "#", "Car", "Start Date", "End Date", "Total Amount", "Status" };
-        JTable table  = new JTable(new Object[][]{}, cols);
-        table.setFont(FONT_SMALL);
-        table.setRowHeight(36);
-        table.setBackground(CLR_WHITE);
-        table.setForeground(CLR_BLACK);
-        table.setGridColor(CLR_BORDER);
-        table.setShowVerticalLines(false);
-        table.setFillsViewportHeight(true);
-        table.setEnabled(false);
-        table.getTableHeader().setFont(FONT_NAV_BOLD);
-        table.getTableHeader().setBackground(CLR_BG);
-        table.getTableHeader().setForeground(CLR_GRAY);
-        table.getTableHeader().setBorder(new MatteBorder(0, 0, 1, 0, CLR_BORDER));
+        String[] cols = {"#", "Car", "Start Date", "End Date", "Total Amount", "Status"};
+
+        JPanel header = new JPanel(new GridLayout(1, cols.length, 0, 0));
+        header.setBackground(CLR_BG);
+        header.setBorder(new MatteBorder(0, 0, 1, 0, CLR_BORDER));
+        header.setPreferredSize(new Dimension(0, 36));
+
+        for (int i = 0; i < cols.length; i++) {
+            JLabel col = new JLabel(cols[i], SwingConstants.CENTER);
+            col.setFont(FONT_NAV_BOLD);
+            col.setForeground(CLR_GRAY);
+            col.setBorder(new MatteBorder(0, 1, 0, 1, CLR_BORDER));
+            header.add(col);
+        }
 
         JLabel empty = new JLabel("No rental records yet.", SwingConstants.CENTER);
         empty.setFont(FONT_SUBTITLE);
         empty.setForeground(CLR_GRAY);
         empty.setBorder(new EmptyBorder(40, 0, 40, 0));
 
-        wrapper.add(table.getTableHeader(), BorderLayout.NORTH);
-        wrapper.add(empty,                  BorderLayout.CENTER);
+        wrapper.add(header, BorderLayout.NORTH);
+        wrapper.add(empty,  BorderLayout.CENTER);
 
-        // TODO: Replace empty label with JScrollPane(table) once RentalDAO is connected
-
+        // TODO: Replace empty label with JScrollPane(table) once RentalDAO is ready
         return wrapper;
     }
 
