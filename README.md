@@ -1,10 +1,10 @@
-# 🚗 Car Rental System
+# Car Rental System
 
 A desktop-based **Car Rental Management System** built with **Java** and **MySQL**, developed as a group project. The system supports two types of users — **Admin** and **Customer** — each with their own dedicated interface and features.
 
 ---
 
-## 👥 Authors
+## Authors
 
 | Name | GitHub Username | Role |
 |------|----------------|------|
@@ -17,7 +17,7 @@ A desktop-based **Car Rental Management System** built with **Java** and **MySQL
 
 ---
 
-## 📋 Project Overview
+## Project Overview
 
 This system allows customers to browse available cars, make reservations, and manage their rentals. Admins can manage the car inventory, oversee customer accounts, handle rentals, and generate reports.
 
@@ -27,7 +27,7 @@ This system allows customers to browse available cars, make reservations, and ma
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -39,7 +39,7 @@ This system allows customers to browse available cars, make reservations, and ma
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -92,7 +92,7 @@ src/
 
 ---
 
-## ⚙️ Setup Instructions
+## Setup Instructions
 
 ### Prerequisites
 - Java JDK 17 or later
@@ -135,7 +135,7 @@ private static final String PASSWORD = "your_mysql_password";
 
 ---
 
-## 🔄 Git Workflow (For Group Members)
+## Git Workflow (For Group Members)
 
 To avoid conflicts, always follow this order:
 
@@ -151,22 +151,3 @@ git push origin main
 
 > 📌 Coordinate with your team on who is working on which file to avoid merge conflicts.
 
----
-
-## 📌 Project Status
-
-- [x] Conceptualization & Diagrams
-- [x] File Structure Planning
-- [ ] Database Schema
-- [ ] Model Classes
-- [ ] Database Connection & DAO Layer
-- [ ] Service Layer
-- [ ] Admin GUI
-- [ ] Customer GUI
-- [ ] Testing
-
----
-
-## 📄 License
-
-This project is for academic purposes only.
