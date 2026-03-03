@@ -232,7 +232,7 @@ public class CustomerDashboardGUI extends JFrame {
     }
 
     // ====================================================
-    //  DIV3 — HORIZONTAL MENU / NAV BAR
+    //  DIV3 — MENU BAR  (dark, 48px)
     // ====================================================
     private JPanel buildMenuBar() {
         JPanel menuBar = new JPanel(new BorderLayout());
@@ -253,7 +253,7 @@ public class CustomerDashboardGUI extends JFrame {
             navItems.add(navButtons[i]);
         }
 
-        // RIGHT — logout
+        // RIGHT — logout button
         JPanel rightSide = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         rightSide.setBackground(CLR_MENUBAR);
 
@@ -273,9 +273,9 @@ public class CustomerDashboardGUI extends JFrame {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getBackground());
                 g2.fillRect(0, 0, getWidth(), getHeight());
-                // Active indicator: bottom blue line
+                // Active state: blue underline at bottom
                 if (getBackground().equals(CLR_MENU_ACTIVE)) {
-                    g2.setColor(new Color(96, 165, 250)); // lighter blue underline
+                    g2.setColor(new Color(96, 165, 250));
                     g2.fillRect(0, getHeight() - 3, getWidth(), 3);
                 }
                 g2.dispose();
@@ -314,37 +314,38 @@ public class CustomerDashboardGUI extends JFrame {
         return btn;
     }
 
-    /** Estimate button width from label text length */
+    /** Estimate button width from label length */
     private int computeNavWidth(String label) {
-        return Math.max(120, label.length() * 9 + 48);
+        return Math.max(110, label.length() * 9 + 48);
     }
 
     // ====================================================
-    //  DIV4 — CONTENT AREA (CardLayout panels)
+    //  DIV4 — CONTENT AREA  (CardLayout, fills all remaining height)
     // ====================================================
     private JPanel buildContentArea() {
         cardLayout  = new CardLayout();
         contentArea = new JPanel(cardLayout);
         contentArea.setBackground(CLR_BG);
 
-        contentArea.add(buildDashboardPanel(),                               PANEL_KEYS[0]);
-        contentArea.add(buildPlaceholderPanel("Browse Cars",        "\uD83D\uDE97"), PANEL_KEYS[1]);
-        contentArea.add(buildPlaceholderPanel("Make a Reservation", "\uD83D\uDCC5"), PANEL_KEYS[2]);
-        contentArea.add(buildPlaceholderPanel("My Rentals",         "\uD83D\uDCCB"), PANEL_KEYS[3]);
-        contentArea.add(buildPlaceholderPanel("Payment",            "\uD83D\uDCB3"), PANEL_KEYS[4]);
+        contentArea.add(buildDashboardPanel(),                                    PANEL_KEYS[0]);
+        contentArea.add(buildPlaceholderPanel("Browse Cars",          "\uD83D\uDE97"), PANEL_KEYS[1]);
+        contentArea.add(buildPlaceholderPanel("Make a Reservation",   "\uD83D\uDCC5"), PANEL_KEYS[2]);
+        contentArea.add(buildPlaceholderPanel("My Rentals",           "\uD83D\uDCCB"), PANEL_KEYS[3]);
+        contentArea.add(buildPlaceholderPanel("Payment",              "\uD83D\uDCB3"), PANEL_KEYS[4]);
 
         cardLayout.show(contentArea, PANEL_KEYS[0]);
         return contentArea;
     }
 
     // ====================================================
-    //  DASHBOARD PANEL
+    //  DASHBOARD PANEL  (default view after login)
     // ====================================================
     private JPanel buildDashboardPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(CLR_BG);
         panel.setBorder(new EmptyBorder(28, 28, 28, 28));
 
+        // Page header
         String displayName = SessionManager.isLoggedIn()
             ? SessionManager.getCurrentUser().getFullName()
             : "Customer";
@@ -364,18 +365,19 @@ public class CustomerDashboardGUI extends JFrame {
         titleStack.add(pageTitle);
         titleStack.add(pageSub);
 
+        // Scrollable body
         JPanel body = new JPanel();
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
         body.setBackground(CLR_BG);
 
         body.add(buildSectionLabel("My Overview"));
         body.add(Box.createVerticalStrut(12));
-        body.add(buildCustomerStatsRow());
+        body.add(buildStatsRow());
         body.add(Box.createVerticalStrut(28));
 
         body.add(buildSectionLabel("My Recent Rentals"));
         body.add(Box.createVerticalStrut(12));
-        body.add(buildRecentRentalsPlaceholder());
+        body.add(buildRecentRentalsTable());
         body.add(Box.createVerticalStrut(28));
 
         body.add(buildSectionLabel("Quick Actions"));
@@ -398,7 +400,7 @@ public class CustomerDashboardGUI extends JFrame {
     // ====================================================
     //  STATS ROW — 4 Cards
     // ====================================================
-    private JPanel buildCustomerStatsRow() {
+    private JPanel buildStatsRow() {
         JPanel row = new JPanel(new GridLayout(1, 4, 16, 0));
         row.setBackground(CLR_BG);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
@@ -464,9 +466,9 @@ public class CustomerDashboardGUI extends JFrame {
     }
 
     // ====================================================
-    //  RECENT RENTALS PLACEHOLDER
+    //  RECENT RENTALS TABLE
     // ====================================================
-    private JPanel buildRecentRentalsPlaceholder() {
+    private JPanel buildRecentRentalsTable() {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(CLR_WHITE);
         wrapper.setBorder(new LineBorder(CLR_BORDER, 1, true));
@@ -496,7 +498,7 @@ public class CustomerDashboardGUI extends JFrame {
         wrapper.add(table.getTableHeader(), BorderLayout.NORTH);
         wrapper.add(empty,                  BorderLayout.CENTER);
 
-        // TODO: Replace empty label with JScrollPane(table) once RentalDAO is ready
+        // TODO: Replace empty label with JScrollPane(table) once RentalDAO is connected
 
         return wrapper;
     }
@@ -546,7 +548,7 @@ public class CustomerDashboardGUI extends JFrame {
     }
 
     // ====================================================
-    //  PLACEHOLDER PANEL
+    //  PLACEHOLDER PANEL  (for unbuilt sections)
     // ====================================================
     private JPanel buildPlaceholderPanel(String title, String icon) {
         JPanel panel = new JPanel(new GridBagLayout());
@@ -596,6 +598,7 @@ public class CustomerDashboardGUI extends JFrame {
             boolean active = (i == index);
             navButtons[i].setBackground(active ? CLR_MENU_ACTIVE : CLR_MENUBAR);
             Component[] comps = navButtons[i].getComponents();
+            // comps[0] = icon label, comps[1] = text label
             if (comps.length > 1 && comps[1] instanceof JLabel lbl) {
                 lbl.setFont(active ? FONT_NAV_BOLD : FONT_NAV);
                 lbl.setForeground(active ? Color.WHITE : new Color(180, 180, 180));
