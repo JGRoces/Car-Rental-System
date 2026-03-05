@@ -4,6 +4,16 @@ A desktop-based **Car Rental Management System** built with **Java** and **MySQL
 
 ---
 
+## Project Overview
+
+This system allows customers to browse available cars, make reservations, and manage their rentals. Admins can manage the car inventory, oversee customer accounts, handle rentals, and generate reports.
+
+### Actors
+- **Admin** — Manages cars, customers, rentals, and generates reports
+- **Customer** — Browses cars, makes reservations, and tracks rental history
+
+---
+
 ## Authors
 
 | Name | GitHub Username | Role |
@@ -13,15 +23,6 @@ A desktop-based **Car Rental Management System** built with **Java** and **MySQL
 | Marvin Karl R. Sangco | @Marvin-Sangco | SWE - BackEnd |
 | Leonard Vincent L. Camat | @Pan-2006 | SWE - FrontEnd |
 
----
-
-## Project Overview
-
-This system allows customers to browse available cars, make reservations, and manage their rentals. Admins can manage the car inventory, oversee customer accounts, handle rentals, and generate reports.
-
-### Actors
-- **Admin** — Manages cars, customers, rentals, and generates reports
-- **Customer** — Browses cars, makes reservations, and tracks rental history
 
 ---
 
