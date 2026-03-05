@@ -16,6 +16,8 @@ This system allows customers to browse available cars, make reservations, and ma
 
 ## Authors
 
+> The Developers who worked on this project.
+
 | Name | GitHub Username | Role |
 |------|----------------|------|
 | Joseph Gabriel A. Roces | @JGR-Dev-Scholar | Quality Engineer |
