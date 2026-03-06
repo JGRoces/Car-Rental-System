@@ -98,21 +98,18 @@ public class CustomerDashboardGUI extends JFrame {
     // Nav Items
     //--------------------------
     private static final String[] NAV_LABELS = {
-        "Dashboard",
         "Browse Cars",
         "Make a Reservation",
         "My Rentals",
         "Payment",
     };
     private static final String[] NAV_ICONS = {
-        "\u229E",
         "\uD83D\uDE97",
         "\uD83D\uDCC5", 
         "\uD83D\uDCCB", 
         "\uD83D\uDCB3"
     };
     private static final String[] PANEL_KEYS = {
-        "DASHBOARD",
         "BROWSE_CARS",
         "MAKE_RESERVATION",
         "MY_RENTALS",
@@ -270,7 +267,6 @@ public class CustomerDashboardGUI extends JFrame {
         // LEFT — nav items
         JPanel navItems = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         navItems.setBackground(CLR_MENUBAR);
-        navItems.setBorder(new EmptyBorder(0, 8, 0, 0));
 
         navButtons = new JButton[NAV_LABELS.length];
         for (int i = 0; i < NAV_LABELS.length; i++) {
@@ -288,7 +284,7 @@ public class CustomerDashboardGUI extends JFrame {
         logoutBtn.addActionListener(e -> handleLogout());
         rightSide.add(logoutBtn);
 
-        menuBar.add(navItems,  BorderLayout.WEST);
+        menuBar.add(navItems,  BorderLayout.CENTER);
         menuBar.add(rightSide, BorderLayout.EAST);
         return menuBar;
     }
@@ -354,7 +350,6 @@ public class CustomerDashboardGUI extends JFrame {
         contentArea = new JPanel(cardLayout);
         contentArea.setBackground(CLR_BG);
 
-        contentArea.add(buildDashboardPanel(),                                    PANEL_KEYS[0]);
         contentArea.add(buildPlaceholderPanel("Browse Cars",          "\uD83D\uDE97"), PANEL_KEYS[1]);
         contentArea.add(buildPlaceholderPanel("Make a Reservation",   "\uD83D\uDCC5"), PANEL_KEYS[2]);
         contentArea.add(buildPlaceholderPanel("My Rentals",           "\uD83D\uDCCB"), PANEL_KEYS[3]);
@@ -537,10 +532,10 @@ public class CustomerDashboardGUI extends JFrame {
         row.setBackground(CLR_BG);
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        row.add(buildActionButton("Browse Cars",     CLR_BLUE,   () -> switchPanel(1)));
-        row.add(buildActionButton("New Reservation", CLR_GREEN,  () -> switchPanel(2)));
-        row.add(buildActionButton("My Rentals",      CLR_YELLOW, () -> switchPanel(3)));
-        row.add(buildActionButton("Make Payment",    CLR_RED,    () -> switchPanel(4)));
+        row.add(buildActionButton("Browse Cars",     CLR_BLUE,   () -> switchPanel(0)));
+        row.add(buildActionButton("New Reservation", CLR_GREEN,  () -> switchPanel(1)));
+        row.add(buildActionButton("My Rentals",      CLR_YELLOW, () -> switchPanel(2)));
+        row.add(buildActionButton("Make Payment",    CLR_RED,    () -> switchPanel(3)));
 
         return row;
     }
