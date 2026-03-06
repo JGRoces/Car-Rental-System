@@ -150,5 +150,5 @@ git commit -m "brief description of what you did"
 git push origin main
 ```
 
-> 📌 Coordinate with your team on who is working on which file to avoid merge conflicts.
+>  Coordinate with the team on who is working on which file to avoid merge conflicts.
 
