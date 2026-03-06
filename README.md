@@ -4,7 +4,19 @@ A desktop-based **Car Rental Management System** built with **Java** and **MySQL
 
 ---
 
+## Project Overview
+
+This system allows customers to browse available cars, make reservations, and manage their rentals. Admins can manage the car inventory, oversee customer accounts, handle rentals, and generate reports.
+
+### Actors
+- **Admin** — Manages cars, customers, rentals, and generates reports
+- **Customer** — Browses cars, makes reservations, and tracks rental history
+
+---
+
 ## Authors
+
+> The Developers who worked on this project.
 
 | Name | GitHub Username | Role |
 |------|----------------|------|
@@ -13,17 +25,6 @@ A desktop-based **Car Rental Management System** built with **Java** and **MySQL
 | Marvin Karl R. Sangco | @Marvin-Sangco | SWE - BackEnd |
 | Leonard Vincent L. Camat | @Pan-2006 | SWE - FrontEnd |
 
-
-
----
-
-## Project Overview
-
-This system allows customers to browse available cars, make reservations, and manage their rentals. Admins can manage the car inventory, oversee customer accounts, handle rentals, and generate reports.
-
-### Actors
-- **Admin** — Manages cars, customers, rentals, and generates reports
-- **Customer** — Browses cars, makes reservations, and tracks rental history
 
 ---
 
@@ -149,5 +150,5 @@ git commit -m "brief description of what you did"
 git push origin main
 ```
 
-> 📌 Coordinate with your team on who is working on which file to avoid merge conflicts.
+>  Coordinate with the team on who is working on which file to avoid merge conflicts.
 
