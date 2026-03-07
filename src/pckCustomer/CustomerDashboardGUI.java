@@ -532,7 +532,8 @@ public class CustomerDashboardGUI extends JFrame {
                 return new String[][] {
                     {"By Type",    "Sedan", "SUV", "MPV", "Van", "Pickup"},
                     {"By Brand",   "Toyota", "Honda", "Mitsubishi", "BYD"},
-                    {"By Price",   "Under ₱1,000", "₱1,000 – ₱2,000", "Above ₱2,000"},
+                    {"By Price",       "Under \u20B11,000", "\u20B11,000 - \u20B12,000", "Above \u20B12,000"},
+                    {"Transmission",   "Automatic", "Manual", "CVT"},
                 };
             case "Make a Reservation":
                 return new String[][] {
