@@ -59,9 +59,7 @@ public class LoginGUI_Test extends JFrame {
     // Entry point
     // -------------------------
     public static void main(String[] args) {
-        // FlatLaf MUST be set up before any Swing component is created
-        FlatDarkLaf.setup();
-
+        FlatDarkLaf.setup(); // FIX 1: Must be called before any Swing component is created
         SwingUtilities.invokeLater(() -> {
             LoginGUI_Test frame = new LoginGUI_Test();
             frame.setVisible(true);
@@ -418,5 +416,69 @@ public class LoginGUI_Test extends JFrame {
     private void setStatus(String message, Color color) {
         statusLabel.setText(message);
         statusLabel.setForeground(color);
+    }
+
+    // =========================================================
+    // FIX 2: CustomTitleBar — was missing, caused compile error
+    // =========================================================
+    private static class CustomTitleBar extends JPanel {
+
+        private Point dragStart;
+
+        public CustomTitleBar(JFrame owner, String title) {
+            setBackground(new Color(18, 18, 18));
+            setPreferredSize(new Dimension(0, 36));
+            setLayout(new BorderLayout());
+
+            // Title label
+            JLabel titleLabel = new JLabel("  " + title);
+            titleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            titleLabel.setForeground(Color.WHITE);
+            add(titleLabel, BorderLayout.CENTER);
+
+            // Window controls (minimize, close)
+            JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+            controls.setBackground(new Color(18, 18, 18));
+            controls.add(makeTitleBarButton("—", new Color(18, 18, 18), new Color(50, 50, 50),
+                    e -> owner.setState(Frame.ICONIFIED)));
+            controls.add(makeTitleBarButton("✕", new Color(18, 18, 18), new Color(196, 43, 28),
+                    e -> System.exit(0)));
+            add(controls, BorderLayout.EAST);
+
+            // Drag-to-move
+            addMouseListener(new MouseAdapter() {
+                @Override public void mousePressed(MouseEvent e) {
+                    dragStart = e.getPoint();
+                }
+            });
+            addMouseMotionListener(new MouseMotionAdapter() {
+                @Override public void mouseDragged(MouseEvent e) {
+                    Point loc = owner.getLocation();
+                    owner.setLocation(
+                        loc.x + e.getX() - dragStart.x,
+                        loc.y + e.getY() - dragStart.y
+                    );
+                }
+            });
+        }
+
+        private JButton makeTitleBarButton(String text, Color bg, Color hover, ActionListener action) {
+            JButton btn = new JButton(text);
+            btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            btn.setForeground(Color.WHITE);
+            btn.setBackground(bg);
+            btn.setFocusPainted(false);
+            btn.setBorderPainted(false);
+            btn.setContentAreaFilled(false);
+            btn.setOpaque(true);
+            btn.setPreferredSize(new Dimension(46, 36));
+            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            btn.addMouseListener(new MouseAdapter() {
+                @Override public void mouseEntered(MouseEvent e) { btn.setBackground(hover); }
+                @Override public void mouseExited(MouseEvent e)  { btn.setBackground(bg);    }
+            });
+            btn.addActionListener(action);
+            return btn;
+        }
     }
 }

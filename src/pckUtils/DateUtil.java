@@ -14,11 +14,11 @@ public class DateUtil {
 
     // Standard display format used across all GUI screens
     private static final DateTimeFormatter DISPLAY_FORMAT =
-        DateTimeFormatter.ofPattern(Constants.DATE_FORMAT_DISPLAY);
+        DateTimeFormatter.ofPattern(ConstantsUtil.DATE_FORMAT_DISPLAY);
 
     // Format used when storing/reading from the database
     private static final DateTimeFormatter DB_FORMAT =
-        DateTimeFormatter.ofPattern(Constants.DATE_FORMAT_DB);
+        DateTimeFormatter.ofPattern(ConstantsUtil.DATE_FORMAT_DB);
 
     // Private constructor — prevent instantiation
     private DateUtil() {}

@@ -8,7 +8,7 @@ package pckUtils;
 public class ConstantsUtil {
 
     // Private constructor — prevent instantiation
-    private Constants() {}
+    private ConstantsUtil() {}
 
     // -------------------------
     // Application Info

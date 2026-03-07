@@ -16,97 +16,78 @@ import java.awt.GridLayout;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.geom.RoundRectangle2D;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.ScrollPaneConstants;
+import javax.swing.JWindow;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
-import javax.swing.border.MatteBorder;
 
 import pckMain.LoginGUI;
 import pckServices.AuthService;
 import pckUtils.SessionManager;
 
-
 /**
  * CustomerDashboardGUI.java
- * Main dashboard screen for the Customer actor.
- * Size: 1600 x 900 — Resizable
+ * Main screen for the Customer actor.
+ * No dashboard — opens directly on Browse Cars.
  *
- * Layout (planned):
+ * Layout:
  * ┌─────────────────────────────────────────────┐
- * │              TOP NAVIGATION BAR             │
- * ├──────────────┬──────────────────────────────┤
- * │              │                              │
- * │   SIDE NAV   │       MAIN CONTENT AREA      │
- * │              │                              │
- * └──────────────┴──────────────────────────────┘
- *
- * TODO: Add navigation bar, sidebar, and content panels
- *       once database and service layers are ready.
+ * │              TITLE BAR (white)              │
+ * ├─────────────────────────────────────────────┤
+ * │         MENU BAR (dark) — centered          │
+ * ├─────────────────────────────────────────────┤
+ * │              CONTENT AREA                   │
+ * └─────────────────────────────────────────────┘
  */
 public class CustomerDashboardGUI extends JFrame {
 
-    // -------------------------
-    // Color Palette
-    // -------------------------
-    private static final Color CLR_BG       = new Color(245, 245, 245);
-    private static final Color CLR_WHITE    = Color.WHITE;
-    private static final Color CLR_BLACK    = new Color(18, 18, 18);
-    private static final Color CLR_GRAY     = new Color(120, 120, 120);
-    private static final Color CLR_BORDER   = new Color(220, 220, 220);
-    private static final Color CLR_TOPBAR       = Color.WHITE;
-    private static final Color CLR_MENUBAR      = new Color(18, 18, 18);
-    private static final Color CLR_MENU_HOVER   = new Color(32, 32, 32);
-    private static final Color CLR_MENU_ACTIVE  = new Color(37, 99, 235);
-    private static final Color CLR_BLUE         = new Color(37, 99, 235);
-    private static final Color CLR_GREEN        = new Color(22, 163, 74);
-    private static final Color CLR_YELLOW       = new Color(234, 179, 8);
-    private static final Color CLR_RED          = new Color(220, 38, 38);
-    private static final Color CLR_BLUE_LIGHT   = new Color(219, 234, 254);
-    private static final Color CLR_GREEN_LIGHT  = new Color(220, 252, 231);
-    private static final Color CLR_YELLOW_LIGHT = new Color(254, 249, 195);
-    private static final Color CLR_RED_LIGHT    = new Color(254, 226, 226);
+    // ─────────────────────────────────────────────
+    //  Colors
+    // ─────────────────────────────────────────────
+    private static final Color CLR_BG          = new Color(245, 245, 245);
+    private static final Color CLR_WHITE       = Color.WHITE;
+    private static final Color CLR_BLACK       = new Color(18, 18, 18);
+    private static final Color CLR_GRAY        = new Color(120, 120, 120);
+    private static final Color CLR_BORDER      = new Color(220, 220, 220);
+    private static final Color CLR_TOPBAR      = Color.WHITE;
+    private static final Color CLR_MENUBAR     = new Color(18, 18, 18);
+    private static final Color CLR_MENU_HOVER  = new Color(32, 32, 32);
+    private static final Color CLR_MENU_ACTIVE = new Color(37, 99, 235);
+    private static final Color CLR_GREEN       = new Color(22, 163, 74);
+    private static final Color CLR_BLUE        = new Color(37, 99, 235);
+    private static final Color CLR_YELLOW      = new Color(234, 179, 8);
+    private static final Color CLR_RED         = new Color(220, 38, 38);
 
-    // -------------------------
-    // Fonts
-    // -------------------------
+    // ─────────────────────────────────────────────
+    //  Fonts
+    // ─────────────────────────────────────────────
     private static final Font FONT_TITLE       = new Font("Segoe UI", Font.BOLD,  20);
     private static final Font FONT_SUBTITLE    = new Font("Segoe UI", Font.PLAIN, 12);
     private static final Font FONT_NAV         = new Font("Segoe UI", Font.PLAIN, 13);
     private static final Font FONT_NAV_BOLD    = new Font("Segoe UI", Font.BOLD,  13);
-    private static final Font FONT_CARD_VALUE  = new Font("Segoe UI", Font.BOLD,  32);
-    private static final Font FONT_CARD_LABEL  = new Font("Segoe UI", Font.BOLD,  12);
-    private static final Font FONT_CARD_SUB    = new Font("Segoe UI", Font.PLAIN, 11);
-    private static final Font FONT_SECTION     = new Font("Segoe UI", Font.BOLD,  15);
-    private static final Font FONT_SMALL       = new Font("Segoe UI", Font.PLAIN, 11);
     private static final Font FONT_TOPBAR_NAME = new Font("Segoe UI", Font.BOLD,  13);
     private static final Font FONT_TOPBAR_ROLE = new Font("Segoe UI", Font.PLAIN, 11);
 
-
-    //--------------------------
-    // Nav Items
-    //--------------------------
+    // ─────────────────────────────────────────────
+    //  Nav items  (no Dashboard)
+    // ─────────────────────────────────────────────
     private static final String[] NAV_LABELS = {
         "Browse Cars",
         "Make a Reservation",
         "My Rentals",
-        "Payment",
+        "Payment"
     };
     private static final String[] NAV_ICONS = {
         "\uD83D\uDE97",
-        "\uD83D\uDCC5", 
-        "\uD83D\uDCCB", 
+        "\uD83D\uDCC5",
+        "\uD83D\uDCCB",
         "\uD83D\uDCB3"
     };
     private static final String[] PANEL_KEYS = {
@@ -115,53 +96,51 @@ public class CustomerDashboardGUI extends JFrame {
         "MY_RENTALS",
         "PAYMENT"
     };
-    
-    //--------------------------
-    //Components
-    //--------------------------
+
+    // ─────────────────────────────────────────────
+    //  Components
+    // ─────────────────────────────────────────────
     private JPanel     contentArea;
     private CardLayout cardLayout;
     private JButton[]  navButtons;
 
-    // -------------------------
-    // Constructor
-    // -------------------------
+    // ─────────────────────────────────────────────
+    //  Constructor
+    // ─────────────────────────────────────────────
     public CustomerDashboardGUI() {
         initWindow();
         initComponents();
     }
 
-    // -------------------------
-    // Window Setup
-    // -------------------------
+    // ─────────────────────────────────────────────
+    //  Window setup
+    // ─────────────────────────────────────────────
     private void initWindow() {
-        setTitle("Car Rental System — Customer Dashboard");
+        setTitle("Car Rental System — Customer Portal");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1600, 900);
-        setMinimumSize(new Dimension(1024, 600));   // Minimum resize boundary
+        setMinimumSize(new Dimension(1024, 600));
         setResizable(true);
         setLocationRelativeTo(null);
         getContentPane().setBackground(CLR_BG);
         setLayout(new BorderLayout());
     }
 
-    // -------------------------
-    // Build Layout
-    // div2 (title bar) + div3 (menu bar) stacked in NORTH
-    // div4 (content area) fills CENTER
-    // -------------------------
+    // ─────────────────────────────────────────────
+    //  Build layout
+    // ─────────────────────────────────────────────
     private void initComponents() {
         JPanel topStack = new JPanel();
         topStack.setLayout(new BoxLayout(topStack, BoxLayout.Y_AXIS));
-        topStack.add(buildTitleBar()); // div2
-        topStack.add(buildMenuBar()); // div3
+        topStack.add(buildTitleBar());
+        topStack.add(buildMenuBar());
 
         add(topStack,           BorderLayout.NORTH);
-        add(buildContentArea(), BorderLayout.CENTER); // div4
+        add(buildContentArea(), BorderLayout.CENTER);
     }
 
     // ====================================================
-    //  DIV2 — TITLE BAR
+    //  TITLE BAR  (white, 64px)
     // ====================================================
     private JPanel buildTitleBar() {
         JPanel bar = new JPanel(new BorderLayout());
@@ -173,7 +152,7 @@ public class CustomerDashboardGUI extends JFrame {
             new EmptyBorder(0, 24, 0, 24)
         ));
 
-        // LEFT — branding
+        // LEFT — colored dots + app name
         JPanel leftSide = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         leftSide.setBackground(CLR_TOPBAR);
 
@@ -202,7 +181,7 @@ public class CustomerDashboardGUI extends JFrame {
         leftSide.add(dots);
         leftSide.add(appName);
 
-        // RIGHT — user info + avatar
+        // RIGHT — user name + avatar
         String displayName = SessionManager.isLoggedIn()
             ? SessionManager.getCurrentUser().getFullName()
             : "Customer";
@@ -256,7 +235,7 @@ public class CustomerDashboardGUI extends JFrame {
     }
 
     // ====================================================
-    //  DIV3 — MENU BAR  (dark, 48px)
+    //  MENU BAR  (dark, 48px, nav centered)
     // ====================================================
     private JPanel buildMenuBar() {
         JPanel menuBar = new JPanel(new BorderLayout());
@@ -264,23 +243,22 @@ public class CustomerDashboardGUI extends JFrame {
         menuBar.setPreferredSize(new Dimension(0, 48));
         menuBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
 
-        // LEFT — nav items
-        JPanel navItems = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        // CENTER — nav buttons
+        JPanel navItems = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         navItems.setBackground(CLR_MENUBAR);
 
         navButtons = new JButton[NAV_LABELS.length];
         for (int i = 0; i < NAV_LABELS.length; i++) {
             final int idx = i;
-            navButtons[i] = buildMenuNavButton(NAV_ICONS[i], NAV_LABELS[i], i == 0);
+            navButtons[i] = buildNavBtn(NAV_ICONS[i], NAV_LABELS[i], i == 0);
             navButtons[i].addActionListener(e -> switchPanel(idx));
             navItems.add(navButtons[i]);
         }
 
-        // RIGHT — logout button
+        // RIGHT — logout
         JPanel rightSide = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         rightSide.setBackground(CLR_MENUBAR);
-
-        JButton logoutBtn = buildMenuNavButton("\uD83D\uDEAA", "Logout", false);
+        JButton logoutBtn = buildNavBtn("\uD83D\uDEAA", "Logout", false);
         logoutBtn.addActionListener(e -> handleLogout());
         rightSide.add(logoutBtn);
 
@@ -289,23 +267,26 @@ public class CustomerDashboardGUI extends JFrame {
         return menuBar;
     }
 
-    private JButton buildMenuNavButton(String icon, String label, boolean isActive) {
+    private JButton buildNavBtn(String icon, String label, boolean isActive) {
         JButton btn = new JButton() {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getBackground());
                 g2.fillRect(0, 0, getWidth(), getHeight());
-                // Active state: blue underline at bottom
-                if (getBackground().equals(CLR_MENU_ACTIVE)) {
+                // Animated underline stored per button
+                Object w = getClientProperty("underlineWidth");
+                int lineW = w instanceof Integer ? (Integer) w : 0;
+                if (lineW > 0) {
                     g2.setColor(new Color(96, 165, 250));
-                    g2.fillRect(0, getHeight() - 3, getWidth(), 3);
+                    int x = (getWidth() - lineW) / 2; // starts from center
+                    g2.fillRect(x, getHeight() - 3, lineW, 3);
                 }
                 g2.dispose();
                 super.paintComponent(g);
             }
         };
-        btn.setLayout(new FlowLayout(FlowLayout.CENTER, 6, 0));
+        btn.setLayout(new BoxLayout(btn, BoxLayout.Y_AXIS));
         btn.setBackground(isActive ? CLR_MENU_ACTIVE : CLR_MENUBAR);
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
@@ -313,263 +294,63 @@ public class CustomerDashboardGUI extends JFrame {
         btn.setPreferredSize(new Dimension(computeNavWidth(label), 48));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        JLabel iconLbl = new JLabel(icon);
-        iconLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
-        iconLbl.setForeground(Color.WHITE);
+        JLabel iconLbl = new JLabel(icon, SwingConstants.CENTER);
+            iconLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+            iconLbl.setForeground(Color.WHITE);
+            iconLbl.setAlignmentX(Component.CENTER_ALIGNMENT);
+            iconLbl.setBorder(new EmptyBorder(6, 0, 0, 0));
 
-        JLabel textLbl = new JLabel(label);
-        textLbl.setFont(isActive ? FONT_NAV_BOLD : FONT_NAV);
-        textLbl.setForeground(isActive ? Color.WHITE : new Color(180, 180, 180));
+        JLabel textLbl = new JLabel(label, SwingConstants.CENTER);
+            textLbl.setFont(isActive ? FONT_NAV_BOLD : FONT_NAV);
+            textLbl.setForeground(isActive ? Color.WHITE : new Color(180, 180, 180));
+            textLbl.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        btn.add(iconLbl);
-        btn.add(textLbl);
+            btn.add(iconLbl);
+            btn.add(textLbl);
+
+        btn.putClientProperty("underlineWidth", 0);
 
         btn.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) {
                 if (!btn.getBackground().equals(CLR_MENU_ACTIVE))
                     btn.setBackground(CLR_MENU_HOVER);
+                animateUnderline(btn, true);
+                // show dropdown if this button has one
+                showDropdown(btn);
             }
             @Override public void mouseExited(MouseEvent e) {
                 if (!btn.getBackground().equals(CLR_MENU_ACTIVE))
                     btn.setBackground(CLR_MENUBAR);
+                animateUnderline(btn, false);
             }
         });
         return btn;
     }
 
-    /** Estimate button width from label length */
     private int computeNavWidth(String label) {
         return Math.max(110, label.length() * 9 + 48);
     }
 
     // ====================================================
-    //  DIV4 — CONTENT AREA  (CardLayout, fills all remaining height)
+    //  CONTENT AREA  (CardLayout — opens on Browse Cars)
     // ====================================================
     private JPanel buildContentArea() {
         cardLayout  = new CardLayout();
         contentArea = new JPanel(cardLayout);
         contentArea.setBackground(CLR_BG);
 
-        contentArea.add(buildPlaceholderPanel("Browse Cars",          "\uD83D\uDE97"), PANEL_KEYS[1]);
-        contentArea.add(buildPlaceholderPanel("Make a Reservation",   "\uD83D\uDCC5"), PANEL_KEYS[2]);
-        contentArea.add(buildPlaceholderPanel("My Rentals",           "\uD83D\uDCCB"), PANEL_KEYS[3]);
-        contentArea.add(buildPlaceholderPanel("Payment",              "\uD83D\uDCB3"), PANEL_KEYS[4]);
+        contentArea.add(buildPlaceholderPanel("Browse Cars",        "\uD83D\uDE97"), PANEL_KEYS[0]);
+        contentArea.add(buildPlaceholderPanel("Make a Reservation", "\uD83D\uDCC5"), PANEL_KEYS[1]);
+        contentArea.add(buildPlaceholderPanel("My Rentals",         "\uD83D\uDCCB"), PANEL_KEYS[2]);
+        contentArea.add(buildPlaceholderPanel("Payment",            "\uD83D\uDCB3"), PANEL_KEYS[3]);
 
+        // Start on Browse Cars
         cardLayout.show(contentArea, PANEL_KEYS[0]);
         return contentArea;
     }
 
     // ====================================================
-    //  DASHBOARD PANEL  (default view after login)
-    // ====================================================
-    private JPanel buildDashboardPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(CLR_BG);
-        panel.setBorder(new EmptyBorder(28, 28, 28, 28));
-
-        // Page header
-        String displayName = SessionManager.isLoggedIn()
-            ? SessionManager.getCurrentUser().getFullName()
-            : "Customer";
-
-        JPanel titleStack = new JPanel(new GridLayout(2, 1, 0, 2));
-        titleStack.setBackground(CLR_BG);
-        titleStack.setBorder(new EmptyBorder(0, 0, 24, 0));
-
-        JLabel pageTitle = new JLabel("Welcome, " + displayName + "!");
-        pageTitle.setFont(FONT_TITLE);
-        pageTitle.setForeground(CLR_BLACK);
-
-        JLabel pageSub = new JLabel("Here's a summary of your account and activity.");
-        pageSub.setFont(FONT_SUBTITLE);
-        pageSub.setForeground(CLR_GRAY);
-
-        titleStack.add(pageTitle);
-        titleStack.add(pageSub);
-
-        // Scrollable body
-        JPanel body = new JPanel();
-        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
-        body.setBackground(CLR_BG);
-
-        body.add(buildSectionLabel("My Overview"));
-        body.add(Box.createVerticalStrut(12));
-        body.add(buildStatsRow());
-        body.add(Box.createVerticalStrut(28));
-
-        body.add(buildSectionLabel("My Recent Rentals"));
-        body.add(Box.createVerticalStrut(12));
-        body.add(buildRecentRentalsPlaceholder());
-        body.add(Box.createVerticalStrut(28));
-
-        body.add(buildSectionLabel("Quick Actions"));
-        body.add(Box.createVerticalStrut(12));
-        body.add(buildQuickActions());
-        body.add(Box.createVerticalStrut(24));
-
-        JScrollPane scroll = new JScrollPane(body);
-        scroll.setBorder(null);
-        scroll.setBackground(CLR_BG);
-        scroll.getViewport().setBackground(CLR_BG);
-        scroll.getVerticalScrollBar().setUnitIncrement(12);
-        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        panel.add(titleStack, BorderLayout.NORTH);
-        panel.add(scroll,     BorderLayout.CENTER);
-        return panel;
-    }
-
-    // ====================================================
-    //  STATS ROW — 4 Cards
-    // ====================================================
-    private JPanel buildStatsRow() {
-        JPanel row = new JPanel(new GridLayout(1, 4, 16, 0));
-        row.setBackground(CLR_BG);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        row.add(buildStatCard("Active Rentals",   "—", "Currently renting",  CLR_BLUE,   CLR_BLUE_LIGHT));
-        row.add(buildStatCard("Total Rentals",    "—", "All time",            CLR_GREEN,  CLR_GREEN_LIGHT));
-        row.add(buildStatCard("Pending Payments", "—", "Awaiting settlement", CLR_YELLOW, CLR_YELLOW_LIGHT));
-        row.add(buildStatCard("Total Spent",      "—", "Lifetime payments",   CLR_RED,    CLR_RED_LIGHT));
-
-        return row;
-    }
-
-    private JPanel buildStatCard(String label, String value, String sub,
-                                  Color accent, Color bgLight) {
-        JPanel card = new JPanel(new BorderLayout());
-        card.setBackground(CLR_WHITE);
-        card.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(CLR_BORDER, 1, true),
-            new EmptyBorder(20, 20, 20, 20)
-        ));
-
-        JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(CLR_WHITE);
-
-        JLabel lbl = new JLabel(label);
-        lbl.setFont(FONT_CARD_LABEL);
-        lbl.setForeground(CLR_GRAY);
-
-        JPanel badge = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(bgLight);
-                g2.fillOval(0, 0, 26, 26);
-                g2.setColor(accent);
-                g2.fillOval(8, 8, 10, 10);
-                g2.dispose();
-            }
-        };
-        badge.setPreferredSize(new Dimension(26, 26));
-        badge.setOpaque(false);
-
-        top.add(lbl,   BorderLayout.WEST);
-        top.add(badge, BorderLayout.EAST);
-
-        JLabel valLbl = new JLabel(value);
-        valLbl.setFont(FONT_CARD_VALUE);
-        valLbl.setForeground(CLR_BLACK);
-
-        JLabel subLbl = new JLabel(sub);
-        subLbl.setFont(FONT_CARD_SUB);
-        subLbl.setForeground(CLR_GRAY);
-
-        JPanel bottom = new JPanel(new GridLayout(2, 1, 0, 2));
-        bottom.setBackground(CLR_WHITE);
-        bottom.add(valLbl);
-        bottom.add(subLbl);
-
-        card.add(top,    BorderLayout.NORTH);
-        card.add(bottom, BorderLayout.SOUTH);
-        return card;
-    }
-
-    // ====================================================
-    //  RECENT RENTALS PLACEHOLDER
-    // ====================================================
-    private JPanel buildRecentRentalsPlaceholder() {
-        JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.setBackground(CLR_WHITE);
-        wrapper.setBorder(new LineBorder(CLR_BORDER, 1, false));
-        wrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
-        wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        String[] cols = {"#", "Car", "Start Date", "End Date", "Total Amount", "Status"};
-
-        JPanel header = new JPanel(new GridLayout(1, cols.length, 0, 0));
-        header.setBackground(CLR_BG);
-        header.setBorder(new MatteBorder(0, 0, 1, 0, CLR_BORDER));
-        header.setPreferredSize(new Dimension(0, 36));
-
-        for (int i = 0; i < cols.length; i++) {
-            JLabel col = new JLabel(cols[i], SwingConstants.CENTER);
-            col.setFont(FONT_NAV_BOLD);
-            col.setForeground(CLR_GRAY);
-            col.setBorder(new MatteBorder(0, 1, 0, 1, CLR_BORDER));
-            header.add(col);
-        }
-
-        JLabel empty = new JLabel("No rental records yet.", SwingConstants.CENTER);
-        empty.setFont(FONT_SUBTITLE);
-        empty.setForeground(CLR_GRAY);
-        empty.setBorder(new EmptyBorder(40, 0, 40, 0));
-
-        wrapper.add(header, BorderLayout.NORTH);
-        wrapper.add(empty,  BorderLayout.CENTER);
-
-        // TODO: Replace empty label with JScrollPane(table) once RentalDAO is ready
-        return wrapper;
-    }
-
-    // ====================================================
-    //  QUICK ACTIONS
-    // ====================================================
-    private JPanel buildQuickActions() {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
-        row.setBackground(CLR_BG);
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        row.add(buildActionButton("Browse Cars",     CLR_BLUE,   () -> switchPanel(0)));
-        row.add(buildActionButton("New Reservation", CLR_GREEN,  () -> switchPanel(1)));
-        row.add(buildActionButton("My Rentals",      CLR_YELLOW, () -> switchPanel(2)));
-        row.add(buildActionButton("Make Payment",    CLR_RED,    () -> switchPanel(3)));
-
-        return row;
-    }
-
-    private JButton buildActionButton(String label, Color color, Runnable action) {
-        JButton btn = new JButton(label) {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getBackground());
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
-        btn.setFont(FONT_NAV_BOLD);
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(color);
-        btn.setPreferredSize(new Dimension(160, 40));
-        btn.setBorderPainted(false);
-        btn.setContentAreaFilled(false);
-        btn.setFocusPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        Color darker = color.darker();
-        btn.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { btn.setBackground(darker); }
-            @Override public void mouseExited(MouseEvent e)  { btn.setBackground(color);  }
-        });
-        btn.addActionListener(e -> action.run());
-        return btn;
-    }
-
-    // ====================================================
-    //  PLACEHOLDER PANEL  (for unbuilt sections)
+    //  PLACEHOLDER PANEL  (replace each with real panel later)
     // ====================================================
     private JPanel buildPlaceholderPanel(String title, String icon) {
         JPanel panel = new JPanel(new GridBagLayout());
@@ -594,9 +375,9 @@ public class CustomerDashboardGUI extends JFrame {
         subLbl.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         inner.add(iconLbl);
-        inner.add(Box.createVerticalStrut(12));
+        inner.add(javax.swing.Box.createVerticalStrut(12));
         inner.add(titleLbl);
-        inner.add(Box.createVerticalStrut(6));
+        inner.add(javax.swing.Box.createVerticalStrut(6));
         inner.add(subLbl);
 
         panel.add(inner);
@@ -604,16 +385,8 @@ public class CustomerDashboardGUI extends JFrame {
     }
 
     // ====================================================
-    //  HELPERS
+    //  SWITCH PANEL
     // ====================================================
-    private JLabel buildSectionLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(FONT_SECTION);
-        label.setForeground(CLR_BLACK);
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return label;
-    }
-
     private void switchPanel(int index) {
         for (int i = 0; i < navButtons.length; i++) {
             boolean active = (i == index);
@@ -628,6 +401,9 @@ public class CustomerDashboardGUI extends JFrame {
         cardLayout.show(contentArea, PANEL_KEYS[index]);
     }
 
+    // ====================================================
+    //  LOGOUT
+    // ====================================================
     private void handleLogout() {
         int confirm = JOptionPane.showConfirmDialog(
             this,
@@ -640,6 +416,115 @@ public class CustomerDashboardGUI extends JFrame {
             AuthService.logout();
             new LoginGUI().setVisible(true);
             this.dispose();
+        }
+    }
+    // ====================================================
+    //  ANIMATED UNDERLINE (for nav buttons)
+    // ====================================================
+        private void animateUnderline(JButton btn, boolean expand) {
+        int maxWidth = btn.getWidth();
+        int[] step = {expand ? 0 : maxWidth};
+        javax.swing.Timer t = new javax.swing.Timer(10, null);
+        t.addActionListener(e -> {
+            if (expand) {
+                step[0] = Math.min(step[0] + 12, maxWidth);
+            } else {
+                step[0] = Math.max(step[0] - 12, 0);
+            }
+            btn.putClientProperty("underlineWidth", step[0]);
+            btn.repaint();
+            if ((expand && step[0] >= maxWidth) || (!expand && step[0] <= 0)) {
+                t.stop();
+            }
+        });
+        t.start();
+    }
+    // ====================================================
+    //  DROPDOWN MENU (for nav buttons that have one)       
+    // ====================================================
+        private JWindow activeDropdown = null;
+
+    private void showDropdown(JButton btn) {
+        if (activeDropdown != null) {
+            activeDropdown.dispose();
+            activeDropdown = null;
+        }
+
+        // Only show dropdown for Browse Cars and Make a Reservation
+        String label = ((JLabel) btn.getComponents()[1]).getText();
+        String[][] items = getDropdownItems(label);
+        if (items == null) return;
+
+        JWindow dropdown = new JWindow(this);
+        activeDropdown = dropdown;
+
+        JPanel panel = new JPanel(new GridLayout(1, items.length, 20, 0));
+        panel.setBackground(new Color(28, 28, 28));
+        panel.setBorder(new EmptyBorder(16, 20, 16, 20));
+
+        for (String[] col : items) {
+            JPanel colPanel = new JPanel();
+            colPanel.setLayout(new BoxLayout(colPanel, BoxLayout.Y_AXIS));
+            colPanel.setBackground(new Color(28, 28, 28));
+
+            JLabel header = new JLabel(col[0].toUpperCase());
+            header.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            header.setForeground(Color.WHITE);
+            header.setBorder(new EmptyBorder(0, 0, 8, 0));
+            colPanel.add(header);
+
+            for (int i = 1; i < col.length; i++) {
+                JLabel item = new JLabel(col[i]);
+                item.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                item.setForeground(new Color(180, 180, 180));
+                item.setBorder(new EmptyBorder(3, 0, 3, 0));
+                item.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                item.addMouseListener(new MouseAdapter() {
+                    public void mouseEntered(MouseEvent e) {
+                        item.setForeground(Color.WHITE);
+                    }
+                    public void mouseExited(MouseEvent e) {
+                        item.setForeground(new Color(180, 180, 180));
+                    }
+                });
+                colPanel.add(item);
+            }
+            panel.add(colPanel);
+        }
+
+        dropdown.setContentPane(panel);
+        dropdown.pack();
+
+        // Position below the button
+        java.awt.Point loc = btn.getLocationOnScreen();
+        dropdown.setLocation(loc.x, loc.y + btn.getHeight());
+
+        dropdown.setVisible(true);
+
+        // Hide when mouse leaves dropdown
+        panel.addMouseListener(new MouseAdapter() {
+            public void mouseExited(MouseEvent e) {
+                dropdown.dispose();
+                activeDropdown = null;
+            }
+        });
+    }
+
+    private String[][] getDropdownItems(String label) {
+        switch (label) {
+            case "Browse Cars":
+                return new String[][] {
+                    {"By Type",    "Sedan", "SUV", "MPV", "Van", "Pickup"},
+                    {"By Brand",   "Toyota", "Honda", "Mitsubishi", "BYD"},
+                    {"By Price",   "Under ₱1,000", "₱1,000–₱2,000", "Above ₱2,000"},
+                };
+            case "Make a Reservation":
+                return new String[][] {
+                    {"Rental",     "New Reservation", "Modify Booking", "Cancel Booking"},
+                    {"Options",    "Per Hour", "Per Day", "Long Term"},
+                };
+            default:
+                return null;
         }
     }
 }
