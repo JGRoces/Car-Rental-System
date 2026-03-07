@@ -1,14 +1,43 @@
 package pckAdmin;
 
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.RoundRectangle2D;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
+import javax.swing.JTable;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.border.MatteBorder;
+
+import pckMain.LoginGUI;
 import pckServices.AuthService;
 import pckUtils.SessionManager;
-import pckMain.LoginGUI;
-
-import javax.swing.*;
-import javax.swing.border.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.geom.RoundRectangle2D;
 
 /**
  * AdminDashboardGUI.java
@@ -232,6 +261,7 @@ public class AdminDashboardGUI extends JFrame {
         sidebar = new JPanel();
         sidebar.setBackground(CLR_SIDEBAR);
         sidebar.setPreferredSize(new Dimension(SIDEBAR_EXPANDED, 0));
+        sidebar.setMinimumSize(new Dimension(SIDEBAR_EXPANDED, 0));
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
         sidebar.setBorder(new EmptyBorder(12, 0, 12, 0));
 
@@ -296,7 +326,7 @@ public class AdminDashboardGUI extends JFrame {
                 super.paintComponent(g);
             }
         };
-        btn.setLayout(new FlowLayout(FlowLayout.LEFT, 16, 0));
+        btn.setLayout(new BorderLayout());
         btn.setBackground(isActive ? CLR_SIDEBAR_ACTIVE : CLR_SIDEBAR);
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
@@ -306,17 +336,23 @@ public class AdminDashboardGUI extends JFrame {
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel iconLbl = new JLabel(icon);
+        // Icon — fixed 60px wrapper so it stays centered when collapsed
+        JPanel iconWrapper = new JPanel(new GridBagLayout());
+        iconWrapper.setOpaque(false);
+        iconWrapper.setPreferredSize(new Dimension(SIDEBAR_COLLAPSED, 44));
+
+        JLabel iconLbl = new JLabel(icon, SwingConstants.CENTER);
         iconLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 15));
         iconLbl.setForeground(Color.WHITE);
-        iconLbl.setPreferredSize(new Dimension(22, 22));
+        iconWrapper.add(iconLbl);
 
         JLabel textLbl = new JLabel(label);
         textLbl.setFont(isActive ? FONT_NAV_BOLD : FONT_NAV);
         textLbl.setForeground(isActive ? Color.WHITE : new Color(180, 180, 180));
+        textLbl.setBorder(new EmptyBorder(0, 0, 0, 12));
 
-        btn.add(iconLbl);
-        btn.add(textLbl);
+        btn.add(iconWrapper, BorderLayout.WEST);
+        btn.add(textLbl,     BorderLayout.CENTER);
 
         btn.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) {
@@ -346,10 +382,20 @@ public class AdminDashboardGUI extends JFrame {
         toggleBtn.setText(sidebarExpanded ? "◀" : "▶");
 
         for (JButton btn : navButtons) {
-            Component[] comps = btn.getComponents();
-            if (comps.length > 1) comps[1].setVisible(sidebarExpanded);
-            btn.setPreferredSize(new Dimension(w, 44));
-        }
+    Component center = ((BorderLayout) btn.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+    if (center != null) center.setVisible(sidebarExpanded);
+    btn.setPreferredSize(new Dimension(w, 44));
+    btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+}
+
+    // Also toggle logout button text
+    Component logoutComp = sidebar.getComponent(sidebar.getComponentCount() - 1);
+    if (logoutComp instanceof JButton logoutBtn) {
+        Component center = ((BorderLayout) logoutBtn.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+        if (center != null) center.setVisible(sidebarExpanded);
+        logoutBtn.setPreferredSize(new Dimension(w, 44));
+        logoutBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+    }
         sidebar.revalidate();
         sidebar.repaint();
         revalidate();
@@ -364,11 +410,11 @@ public class AdminDashboardGUI extends JFrame {
         contentArea = new JPanel(cardLayout);
         contentArea.setBackground(CLR_BG);
 
-        contentArea.add(buildOverviewPanel(),                           PANEL_KEYS[0]);
-        contentArea.add(buildPlaceholderPanel("Manage Cars",      "🚗"), PANEL_KEYS[1]);
-        contentArea.add(buildPlaceholderPanel("Manage Customers", "👤"), PANEL_KEYS[2]);
-        contentArea.add(buildPlaceholderPanel("Manage Rentals",   "📋"), PANEL_KEYS[3]);
-        contentArea.add(buildPlaceholderPanel("Reports",          "📊"), PANEL_KEYS[4]);
+        contentArea.add(buildOverviewPanel(),                                    PANEL_KEYS[0]);
+        contentArea.add(buildPlaceholderPanel("Manage Cars",      "\uD83D\uDE97"), PANEL_KEYS[1]);
+        contentArea.add(buildPlaceholderPanel("Manage Customers", "\uD83D\uDC64"), PANEL_KEYS[2]);
+        contentArea.add(buildPlaceholderPanel("Manage Rentals",   "\uD83D\uDCCB"), PANEL_KEYS[3]);
+        contentArea.add(buildPlaceholderPanel("Reports",          "\uD83D\uDCCA"), PANEL_KEYS[4]);
 
         cardLayout.show(contentArea, PANEL_KEYS[0]);
         return contentArea;
@@ -632,8 +678,9 @@ public class AdminDashboardGUI extends JFrame {
         for (int i = 0; i < navButtons.length; i++) {
             boolean active = (i == index);
             navButtons[i].setBackground(active ? CLR_SIDEBAR_ACTIVE : CLR_SIDEBAR);
-            Component[] comps = navButtons[i].getComponents();
-            if (comps.length > 1 && comps[1] instanceof JLabel lbl) {
+            Component center = ((BorderLayout) navButtons[i].getLayout())
+                .getLayoutComponent(BorderLayout.CENTER);
+            if (center instanceof JLabel lbl) {
                 lbl.setFont(active ? FONT_NAV_BOLD : FONT_NAV);
                 lbl.setForeground(active ? Color.WHITE : new Color(180, 180, 180));
             }
