@@ -455,34 +455,36 @@ public class CustomerDashboardGUI extends JFrame {
         activeDropdown = dropdown;
 
         JPanel panel = new JPanel(new GridLayout(1, items.length, 20, 0));
-        panel.setBackground(new Color(40, 40, 40, 200));
-        panel.setBorder(new EmptyBorder(16, 20, 16, 20));
+        panel.setBackground(new Color(20, 20, 20, 153));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(60, 60, 60, 180), 1),
+            new EmptyBorder(16, 20, 16, 20)
+        ));
         panel.setOpaque(false);
 
         for (String[] col : items) {
             JPanel colPanel = new JPanel();
             colPanel.setLayout(new BoxLayout(colPanel, BoxLayout.Y_AXIS));
-            colPanel.setBackground(new Color(40, 40, 40, 200));
             colPanel.setOpaque(false);
 
             JLabel header = new JLabel(col[0].toUpperCase());
             header.setFont(new Font("Segoe UI", Font.BOLD, 11));
-            header.setForeground(Color.WHITE);
+            header.setForeground(new Color(80, 80,80));
             header.setBorder(new EmptyBorder(0, 0, 8, 0));
             colPanel.add(header);
 
             for (int i = 1; i < col.length; i++) {
                 JLabel item = new JLabel(col[i]);
                 item.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-                item.setForeground(new Color(180, 180, 180));
+                item.setForeground(new Color(50, 50, 50));
                 item.setBorder(new EmptyBorder(3, 0, 3, 0));
                 item.setCursor(new Cursor(Cursor.HAND_CURSOR));
                 item.addMouseListener(new MouseAdapter() {
                     public void mouseEntered(MouseEvent e) {
-                        item.setForeground(Color.WHITE);
+                        item.setForeground(new Color(18, 18, 18));
                     }
                     public void mouseExited(MouseEvent e) {
-                        item.setForeground(new Color(180, 180, 180));
+                        item.setForeground(new Color(50, 50, 50));
                     }
                 });
                 colPanel.add(item);
@@ -499,7 +501,21 @@ public class CustomerDashboardGUI extends JFrame {
         java.awt.Point loc = btn.getLocationOnScreen();
         dropdown.setLocation(loc.x, loc.y + btn.getHeight());
 
+        // Slide down animation
+        java.awt.Point finalLoc = dropdown.getLocation();
+        int finalHeight = dropdown.getHeight();
+        dropdown.setSize(dropdown.getWidth(), 0);
         dropdown.setVisible(true);
+
+        int[] h = {0};
+        javax.swing.Timer slideDown = new javax.swing.Timer(8, null);
+        slideDown.addActionListener(ev -> {
+            h[0] = Math.min(h[0] + 12, finalHeight);
+            dropdown.setSize(dropdown.getWidth(), h[0]);
+            dropdown.setLocation(finalLoc);
+            if (h[0] >= finalHeight) slideDown.stop();
+        });
+        slideDown.start();
 
         // Hide when mouse leaves dropdown
         panel.addMouseListener(new MouseAdapter() {
@@ -522,6 +538,16 @@ public class CustomerDashboardGUI extends JFrame {
                 return new String[][] {
                     {"Rental",     "New Reservation", "Modify Booking", "Cancel Booking"},
                     {"Options",    "Per Hour", "Per Day", "Long Term"},
+                };
+            case "My Rentals":
+                return new String[][] {
+                    {"Status",    "Active Rentals", "Pending Approval", "Completed", "Cancelled"},
+                    {"Actions",   "View Details", "Extend Rental", "Request Return"},
+                };
+            case "Payment":
+                return new String[][] {
+                    {"Transactions", "Payment History", "Pending Payments", "Refund Status"},
+                    {"Methods",      "Manage Payment Methods", "Add Credit Card", "Add PayPal"},
                 };
             default:
                 return null;
