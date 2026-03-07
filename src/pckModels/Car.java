@@ -7,8 +7,9 @@ import java.math.BigDecimal;
  * Represents a car in the inventory.
  * Maps to the `cars` table.
  *
- * category ENUM : Sedan, SUV, Van, Truck
- * status   ENUM : AVAILABLE, RENTED, MAINTENANCE
+ * category     ENUM : Sedan, SUV, Van, Truck, Pickup, Coupe, Minivan
+ * transmission ENUM : Automatic, Manual
+ * status       ENUM : AVAILABLE, RENTED, MAINTENANCE
  */
 public class Car {
 
@@ -18,61 +19,112 @@ public class Car {
     private int        year;
     private String     plateNumber;
     private String     category;
+    private String     transmission;
+    private int        seatCapacity;
     private BigDecimal dailyRate;
     private String     status;
+    private String     imagePath;     // relative path e.g. "assets/images/cars/toyota-vios.png"
 
-    // New car — before DB insert
+    // -------------------------
+    // Constructor — New car (before DB insert)
+    // -------------------------
     public Car(String brand, String model, int year, String plateNumber,
-               String category, BigDecimal dailyRate) {
-        this.brand       = brand;
-        this.model       = model;
-        this.year        = year;
-        this.plateNumber = plateNumber;
-        this.category    = category;
-        this.dailyRate   = dailyRate;
-        this.status      = "AVAILABLE"; // default
+               String category, String transmission, int seatCapacity,
+               BigDecimal dailyRate) {
+        this.brand        = brand;
+        this.model        = model;
+        this.year         = year;
+        this.plateNumber  = plateNumber;
+        this.category     = category;
+        this.transmission = transmission;
+        this.seatCapacity = seatCapacity;
+        this.dailyRate    = dailyRate;
+        this.status       = "AVAILABLE"; // default on creation
+        this.imagePath    = null;
     }
 
-    // Loaded from DB — has carId and status
+    // -------------------------
+    // Constructor — Loaded from DB (has carId, status, imagePath)
+    // -------------------------
     public Car(int carId, String brand, String model, int year, String plateNumber,
-               String category, BigDecimal dailyRate, String status) {
-        this.carId       = carId;
-        this.brand       = brand;
-        this.model       = model;
-        this.year        = year;
-        this.plateNumber = plateNumber;
-        this.category    = category;
-        this.dailyRate   = dailyRate;
-        this.status      = status;
+               String category, String transmission, int seatCapacity,
+               BigDecimal dailyRate, String status, String imagePath) {
+        this.carId        = carId;
+        this.brand        = brand;
+        this.model        = model;
+        this.year         = year;
+        this.plateNumber  = plateNumber;
+        this.category     = category;
+        this.transmission = transmission;
+        this.seatCapacity = seatCapacity;
+        this.dailyRate    = dailyRate;
+        this.status       = status;
+        this.imagePath    = imagePath;
     }
 
-    public int        getCarId()       { return carId;       }
-    public String     getBrand()       { return brand;       }
-    public String     getModel()       { return model;       }
-    public int        getYear()        { return year;        }
-    public String     getPlateNumber() { return plateNumber; }
-    public String     getCategory()    { return category;    }
-    public BigDecimal getDailyRate()   { return dailyRate;   }
-    public String     getStatus()      { return status;      }
+    // -------------------------
+    // Getters
+    // -------------------------
+    public int        getCarId()        { return carId;        }
+    public String     getBrand()        { return brand;        }
+    public String     getModel()        { return model;        }
+    public int        getYear()         { return year;         }
+    public String     getPlateNumber()  { return plateNumber;  }
+    public String     getCategory()     { return category;     }
+    public String     getTransmission() { return transmission; }
+    public int        getSeatCapacity() { return seatCapacity; }
+    public BigDecimal getDailyRate()    { return dailyRate;    }
+    public String     getStatus()       { return status;       }
+    public String     getImagePath()    { return imagePath;    }
 
-    public void setCarId(int carId)              { this.carId       = carId;       }
-    public void setBrand(String brand)           { this.brand       = brand;       }
-    public void setModel(String model)           { this.model       = model;       }
-    public void setYear(int year)                { this.year        = year;        }
-    public void setPlateNumber(String plate)     { this.plateNumber = plate;       }
-    public void setCategory(String category)     { this.category    = category;    }
-    public void setDailyRate(BigDecimal rate)    { this.dailyRate   = rate;        }
-    public void setStatus(String status)         { this.status      = status;      }
+    // -------------------------
+    // Setters
+    // -------------------------
+    public void setCarId(int carId)                  { this.carId        = carId;        }
+    public void setBrand(String brand)               { this.brand        = brand;        }
+    public void setModel(String model)               { this.model        = model;        }
+    public void setYear(int year)                    { this.year         = year;         }
+    public void setPlateNumber(String plateNumber)   { this.plateNumber  = plateNumber;  }
+    public void setCategory(String category)         { this.category     = category;     }
+    public void setTransmission(String transmission) { this.transmission = transmission; }
+    public void setSeatCapacity(int seatCapacity)    { this.seatCapacity = seatCapacity; }
+    public void setDailyRate(BigDecimal dailyRate)   { this.dailyRate    = dailyRate;    }
+    public void setStatus(String status)             { this.status       = status;       }
+    public void setImagePath(String imagePath)       { this.imagePath    = imagePath;    }
 
-    // Convenience — display name for dropdowns/tables
+    // -------------------------
+    // Convenience Methods
+    // -------------------------
+
+    /** Full display name — used in dropdowns and table rows */
     public String getDisplayName() {
         return year + " " + brand + " " + model + " (" + plateNumber + ")";
     }
 
+    /** Short display name — used in car cards */
+    public String getShortName() {
+        return brand + " " + model;
+    }
+
+    /** Returns true if car can be rented right now */
+    public boolean isAvailable() {
+        return "AVAILABLE".equals(status);
+    }
+
     @Override
     public String toString() {
-        return "Car{carId=" + carId + ", brand='" + brand + "', model='" + model +
-               "', year=" + year + ", plate='" + plateNumber + "', category='" +
-               category + "', dailyRate=" + dailyRate + ", status='" + status + "'}";
+        return "Car{" +
+               "carId="        + carId        +
+               ", brand='"     + brand        + '\'' +
+               ", model='"     + model        + '\'' +
+               ", year="       + year         +
+               ", plate='"     + plateNumber  + '\'' +
+               ", category='"  + category     + '\'' +
+               ", transmission='" + transmission + '\'' +
+               ", seatCapacity=" + seatCapacity  +
+               ", dailyRate="  + dailyRate    +
+               ", status='"    + status       + '\'' +
+               ", imagePath='" + imagePath    + '\'' +
+               '}';
     }
 }
