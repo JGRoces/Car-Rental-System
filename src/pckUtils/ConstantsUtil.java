@@ -42,8 +42,10 @@ public class ConstantsUtil {
     // Car Categories
     // -------------------------
     public static final String[] CAR_CATEGORIES = {
-        "Sedan", "SUV", "Van", "Truck"
+        "Sedan", "SUV", "Van", "Truck", "Pickup", "Coupe", "Minivan"
     };
+    public static final String[] TRANSMISSIONS = { "Automatic", "Manual" };
+    public static final int[]    SEAT_OPTIONS  = { 2, 4, 5, 7, 8, 12 };
 
     // -------------------------
     // Status Values
