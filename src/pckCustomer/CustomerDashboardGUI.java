@@ -59,7 +59,6 @@ public class CustomerDashboardGUI extends JFrame {
     private static final Color CLR_TOPBAR      = Color.WHITE;
     private static final Color CLR_MENUBAR     = new Color(18, 18, 18);
     private static final Color CLR_MENU_HOVER  = new Color(32, 32, 32);
-    private static final Color CLR_MENU_ACTIVE = new Color(37, 99, 235);
     private static final Color CLR_GREEN       = new Color(22, 163, 74);
     private static final Color CLR_BLUE        = new Color(37, 99, 235);
     private static final Color CLR_YELLOW      = new Color(234, 179, 8);
@@ -287,7 +286,7 @@ public class CustomerDashboardGUI extends JFrame {
             }
         };
         btn.setLayout(new BoxLayout(btn, BoxLayout.Y_AXIS));
-        btn.setBackground(isActive ? CLR_MENU_ACTIVE : CLR_MENUBAR);
+        btn.setBackground(CLR_MENUBAR);
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
         btn.setFocusPainted(false);
@@ -310,20 +309,17 @@ public class CustomerDashboardGUI extends JFrame {
 
         btn.putClientProperty("underlineWidth", 0);
 
-        btn.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) {
-                if (!btn.getBackground().equals(CLR_MENU_ACTIVE))
-                    btn.setBackground(CLR_MENU_HOVER);
-                animateUnderline(btn, true);
-                // show dropdown if this button has one
-                showDropdown(btn);
-            }
-            @Override public void mouseExited(MouseEvent e) {
-                if (!btn.getBackground().equals(CLR_MENU_ACTIVE))
-                    btn.setBackground(CLR_MENUBAR);
-                animateUnderline(btn, false);
-            }
-        });
+            btn.addMouseListener(new MouseAdapter() {
+        @Override public void mouseEntered(MouseEvent e) {
+            btn.setBackground(CLR_MENU_HOVER);
+            animateUnderline(btn, true);
+            showDropdown(btn);
+        }
+        @Override public void mouseExited(MouseEvent e) {
+            btn.setBackground(CLR_MENUBAR);
+            animateUnderline(btn, false);
+        }
+    });
         return btn;
     }
 
@@ -390,7 +386,7 @@ public class CustomerDashboardGUI extends JFrame {
     private void switchPanel(int index) {
         for (int i = 0; i < navButtons.length; i++) {
             boolean active = (i == index);
-            navButtons[i].setBackground(active ? CLR_MENU_ACTIVE : CLR_MENUBAR);
+            navButtons[i].setBackground(CLR_MENUBAR);
             Component[] comps = navButtons[i].getComponents();
             // comps[0] = icon label, comps[1] = text label
             if (comps.length > 1 && comps[1] instanceof JLabel lbl) {
@@ -459,13 +455,15 @@ public class CustomerDashboardGUI extends JFrame {
         activeDropdown = dropdown;
 
         JPanel panel = new JPanel(new GridLayout(1, items.length, 20, 0));
-        panel.setBackground(new Color(28, 28, 28));
+        panel.setBackground(new Color(40, 40, 40, 200));
         panel.setBorder(new EmptyBorder(16, 20, 16, 20));
+        panel.setOpaque(false);
 
         for (String[] col : items) {
             JPanel colPanel = new JPanel();
             colPanel.setLayout(new BoxLayout(colPanel, BoxLayout.Y_AXIS));
-            colPanel.setBackground(new Color(28, 28, 28));
+            colPanel.setBackground(new Color(40, 40, 40, 200));
+            colPanel.setOpaque(false);
 
             JLabel header = new JLabel(col[0].toUpperCase());
             header.setFont(new Font("Segoe UI", Font.BOLD, 11));
@@ -492,6 +490,8 @@ public class CustomerDashboardGUI extends JFrame {
             panel.add(colPanel);
         }
 
+        dropdown.setBackground(new Color(0, 0, 0, 0));
+        dropdown.getRootPane().setOpaque(false);
         dropdown.setContentPane(panel);
         dropdown.pack();
 
@@ -516,7 +516,7 @@ public class CustomerDashboardGUI extends JFrame {
                 return new String[][] {
                     {"By Type",    "Sedan", "SUV", "MPV", "Van", "Pickup"},
                     {"By Brand",   "Toyota", "Honda", "Mitsubishi", "BYD"},
-                    {"By Price",   "Under ₱1,000", "₱1,000–₱2,000", "Above ₱2,000"},
+                    {"By Price",   "Under ₱1,000", "₱1,000 – ₱2,000", "Above ₱2,000"},
                 };
             case "Make a Reservation":
                 return new String[][] {
