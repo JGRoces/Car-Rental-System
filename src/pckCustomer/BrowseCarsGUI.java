@@ -17,16 +17,14 @@ import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
+import java.io.File;
 import java.math.BigDecimal;
-import java.net.URL;
 import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -48,13 +46,19 @@ import pckServices.CarService;
  *
  * Layout:
  * ┌──────────────────────────────────────────────────────┐
- * │  "Browse Cars"  +  results count      [Refresh]      │  ← HEADER
+ * │  "Browse Cars" + results count          [Refresh]    │  ← HEADER
  * ├──────────────────────────────────────────────────────┤
  * │  🔍 Search bar                                       │  ← SEARCH
  * ├─────────────────────────────────────┬────────────────┤
  * │  [ Card ][ Card ][ Card ][ Card ]   │  Detail Panel  │
  * │  [ Card ][ Card ][ Card ][ Card ]   │  (slide-out)   │  ← BODY
  * └─────────────────────────────────────┴────────────────┘
+ *
+ * Image loading:
+ *  - DB stores filename only (e.g. "honda-civic.png")
+ *  - Resolved to assets/images/<filename> at runtime
+ *  - Cover scaling: fills placeholder, preserves aspect ratio, crops excess
+ *  - Falls back to category emoji if image is missing or null
  */
 public class BrowseCarsGUI extends JPanel {
 
@@ -108,7 +112,10 @@ public class BrowseCarsGUI extends JPanel {
     //  Callback — set by CustomerDashboardGUI
     // ─────────────────────────────────────────────
     private Runnable onRentNow;
-    public void setOnRentNow(Runnable r) { this.onRentNow = r; }
+
+    public void setOnRentNow(Runnable r) {
+        this.onRentNow = r;
+    }
 
     // ─────────────────────────────────────────────
     //  Constructor
@@ -167,7 +174,6 @@ public class BrowseCarsGUI extends JPanel {
         header.setAlignmentX(Component.LEFT_ALIGNMENT);
         header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
 
-        // LEFT — title + results count
         JPanel left = new JPanel();
         left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
         left.setBackground(CLR_BG);
@@ -183,9 +189,9 @@ public class BrowseCarsGUI extends JPanel {
         left.add(title);
         left.add(resultsCountLabel);
 
-        // RIGHT — refresh button
         JButton refreshBtn = new JButton("Refresh") {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getBackground());
@@ -233,7 +239,8 @@ public class BrowseCarsGUI extends JPanel {
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
 
         JPanel wrapper = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(CLR_WHITE);
@@ -259,13 +266,15 @@ public class BrowseCarsGUI extends JPanel {
         searchField.setText("Search by brand, model, or plate number...");
 
         searchField.addFocusListener(new FocusAdapter() {
-            @Override public void focusGained(FocusEvent e) {
+            @Override
+            public void focusGained(FocusEvent e) {
                 if (searchField.getText().startsWith("Search")) {
                     searchField.setText("");
                     searchField.setForeground(CLR_BLACK);
                 }
             }
-            @Override public void focusLost(FocusEvent e) {
+            @Override
+            public void focusLost(FocusEvent e) {
                 if (searchField.getText().isBlank()) {
                     searchField.setText("Search by brand, model, or plate number...");
                     searchField.setForeground(CLR_GRAY);
@@ -284,11 +293,11 @@ public class BrowseCarsGUI extends JPanel {
     //  CAR CARDS GRID  (5 columns, scrollable)
     // ====================================================
     private JScrollPane buildCardsArea() {
-        cardGrid = new JPanel(new GridLayout(0, 5, 16, 16));        cardGrid.setBackground(CLR_BG);
+        cardGrid = new JPanel(new GridLayout(0, 5, 16, 16));
+        cardGrid.setBackground(CLR_BG);
         cardGrid.setBorder(new EmptyBorder(4, 0, 4, 0));
         populateGrid(allCars);
 
-        // Wrap in NORTH so cards never stretch vertically
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(CLR_BG);
         wrapper.add(cardGrid, BorderLayout.NORTH);
@@ -312,7 +321,9 @@ public class BrowseCarsGUI extends JPanel {
             cardGrid.add(empty, BorderLayout.CENTER);
         } else {
             cardGrid.setLayout(new GridLayout(0, 5, 12, 12));
-            for (Car car : cars) cardGrid.add(buildCarCard(car));
+            for (Car car : cars) {
+                cardGrid.add(buildCarCard(car));
+            }
         }
         resultsCountLabel.setText(cars.size() + " cars found");
         cardGrid.revalidate();
@@ -324,11 +335,11 @@ public class BrowseCarsGUI extends JPanel {
     // ====================================================
     private JPanel buildCarCard(Car car) {
 
-        // cardRef lets paintComponent/paintBorder safely reference the card
         final JPanel[] cardRef = new JPanel[1];
 
         JPanel card = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setColor(new Color(0, 0, 0, 18));
                 g2.fillRoundRect(3, 4, getWidth() - 4, getHeight() - 4, 20, 20);
@@ -336,16 +347,18 @@ public class BrowseCarsGUI extends JPanel {
                 g2.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 20, 20));
                 g2.setColor(CLR_WHITE);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
-                g2.dispose();            
+                g2.dispose();
             }
-            @Override protected void paintBorder(Graphics g) {
+            @Override
+            protected void paintBorder(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 boolean hovered  = Boolean.TRUE.equals(getClientProperty("hovered"));
                 boolean selected = (cardRef[0] == selectedCardPanel);
                 g2.setColor(selected || hovered ? CLR_BLUE : new Color(190, 190, 190));
                 g2.setStroke(new BasicStroke(selected || hovered ? 2f : 1f));
-                g2.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 20, 20);                g2.dispose();
+                g2.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 20, 20);
+                g2.dispose();
             }
         };
         cardRef[0] = card;
@@ -356,15 +369,10 @@ public class BrowseCarsGUI extends JPanel {
         card.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         card.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) {
-                card.putClientProperty("hovered", true);
-                card.repaint();
-            }
-            @Override public void mouseExited(MouseEvent e) {
-                card.putClientProperty("hovered", false);
-                card.repaint();
-            }
-            @Override public void mouseClicked(MouseEvent e) {
+            @Override public void mouseEntered(MouseEvent e) { card.putClientProperty("hovered", true);  card.repaint(); }
+            @Override public void mouseExited(MouseEvent e)  { card.putClientProperty("hovered", false); card.repaint(); }
+            @Override
+            public void mouseClicked(MouseEvent e) {
                 if (selectedCardPanel != null) selectedCardPanel.repaint();
                 selectedCardPanel = card;
                 card.repaint();
@@ -372,26 +380,41 @@ public class BrowseCarsGUI extends JPanel {
             }
         });
 
-        // ── Image area (140px) ──
+        // ── Image area (140px) — cover paint with rounded top corners ──
+        final BufferedImage cardImg = loadImageRaw(car.getImagePath());
+
         JPanel imgArea = new JPanel(new BorderLayout()) {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(235, 238, 245));
-                // Only round the TOP two corners (bottom edge meets the info panel)
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
-                g2.setColor(new Color(235, 238, 245));
-                g2.fillRect(0, getHeight() - 20, getWidth(), 20);                g2.dispose();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+
+                // Clip to rounded top corners only (bottom is flush with info panel)
+                g2.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 20, 20));
+
+                if (cardImg != null) {
+                    // Cover: scale to fill, center, crop excess — no distortion
+                    int pw = getWidth(),       ph = getHeight();
+                    int iw = cardImg.getWidth(), ih = cardImg.getHeight();
+                    double scale = Math.max((double) pw / iw, (double) ph / ih);
+                    int drawW = (int) (iw * scale);
+                    int drawH = (int) (ih * scale);
+                    int x = (pw - drawW) / 2;
+                    int y = (ph - drawH) / 2;
+                    g2.drawImage(cardImg, x, y, drawW, drawH, null);
+                } else {
+                    // Fallback — plain background, emoji added as child component
+                    g2.setColor(new Color(235, 238, 245));
+                    g2.fillRect(0, 0, getWidth(), getHeight());
+                }
+                g2.dispose();
             }
         };
         imgArea.setOpaque(false);
         imgArea.setPreferredSize(new Dimension(0, 140));
 
-        String imgPath = car.getImagePath();
-        ImageIcon cardIcon = loadImage(imgPath, 200, 110);
-        if (cardIcon != null) {
-            imgArea.add(new JLabel(cardIcon, SwingConstants.CENTER), BorderLayout.CENTER);
-        } else {
+        if (cardImg == null) {
             imgArea.add(buildCarEmoji(car.getCategory()), BorderLayout.CENTER);
         }
 
@@ -399,7 +422,7 @@ public class BrowseCarsGUI extends JPanel {
         JPanel info = new JPanel();
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
         info.setBackground(CLR_WHITE);
-        info.setOpaque(true); // clipped by card's paintComponent
+        info.setOpaque(true);
         info.setBorder(new EmptyBorder(10, 12, 12, 12));
 
         JLabel nameLbl = new JLabel(car.getBrand() + " " + car.getModel());
@@ -490,8 +513,8 @@ public class BrowseCarsGUI extends JPanel {
         Timer t = new Timer(SLIDE_DELAY, null);
         t.addActionListener(e -> {
             current[0] = open
-                ? Math.min(current[0] + SLIDE_STEP, target)
-                : Math.max(current[0] - SLIDE_STEP, target);
+                    ? Math.min(current[0] + SLIDE_STEP, target)
+                    : Math.max(current[0] - SLIDE_STEP, target);
             detailPanel.setPreferredSize(new Dimension(current[0], 0));
             bodyPanel.revalidate();
             if (current[0] == target) {
@@ -510,11 +533,41 @@ public class BrowseCarsGUI extends JPanel {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(CLR_WHITE);
 
-        // ── Image area + back button ──
-        JPanel imgArea = new JPanel(new BorderLayout());
-        imgArea.setPreferredSize(new Dimension(DETAIL_WIDTH, 180));
-        imgArea.setBackground(new Color(235, 238, 245));
+        // ── Image area — cover image as background, topBar floats on top ──
+        final BufferedImage detailImg = loadImageRaw(car.getImagePath());
 
+        JPanel imgArea = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
+
+                if (detailImg != null) {
+                    // Cover: scale to fill, center, crop excess — no distortion
+                    int pw = getWidth(),        ph = getHeight();
+                    int iw = detailImg.getWidth(), ih = detailImg.getHeight();
+                    double scale = Math.max((double) pw / iw, (double) ph / ih);
+                    int drawW = (int) (iw * scale);
+                    int drawH = (int) (ih * scale);
+                    int x = (pw - drawW) / 2;
+                    int y = (ph - drawH) / 2;
+                    g2.drawImage(detailImg, x, y, drawW, drawH, null);
+                } else {
+                    g2.setColor(new Color(235, 238, 245));
+                    g2.fillRect(0, 0, getWidth(), getHeight());
+                }
+                g2.dispose();
+            }
+        };
+        imgArea.setOpaque(false);
+        imgArea.setPreferredSize(new Dimension(DETAIL_WIDTH, 180));
+
+        if (detailImg == null) {
+            imgArea.add(buildCarEmoji(car.getCategory()), BorderLayout.CENTER);
+        }
+
+        // topBar overlays the image via BorderLayout.NORTH
         JPanel topBar = new JPanel(new BorderLayout());
         topBar.setOpaque(false);
         topBar.setBorder(new EmptyBorder(8, 8, 0, 8));
@@ -525,7 +578,8 @@ public class BrowseCarsGUI extends JPanel {
         topBar.add(badgeWrap, BorderLayout.WEST);
 
         JButton closeBtn = new JButton("\u2190  Back") {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getBackground());
@@ -550,12 +604,6 @@ public class BrowseCarsGUI extends JPanel {
         topBar.add(closeBtn, BorderLayout.EAST);
         imgArea.add(topBar, BorderLayout.NORTH);
 
-        ImageIcon detailIcon = loadImage(car.getImagePath(), 320, 140);
-        if (detailIcon != null) {
-            imgArea.add(new JLabel(detailIcon, SwingConstants.CENTER), BorderLayout.CENTER);
-        } else {
-            imgArea.add(buildCarEmoji(car.getCategory()), BorderLayout.CENTER);
-        }
         root.add(imgArea, BorderLayout.NORTH);
 
         // ── Scrollable body ──
@@ -578,7 +626,6 @@ public class BrowseCarsGUI extends JPanel {
         body.add(yearCat);
         body.add(Box.createVerticalStrut(16));
 
-        // Specs
         body.add(buildSectionHeader("Specifications"));
         body.add(Box.createVerticalStrut(8));
         body.add(buildSpecRow("Plate Number",  car.getPlateNumber()));
@@ -587,14 +634,13 @@ public class BrowseCarsGUI extends JPanel {
         body.add(buildSpecRow("Category",      car.getCategory()));
         body.add(Box.createVerticalStrut(16));
 
-        // Pricing breakdown
         double base  = car.getDailyRate().doubleValue();
         double tax   = base * 0.12;
         double total = base + tax;
 
         body.add(buildSectionHeader("Daily Rate Breakdown"));
         body.add(Box.createVerticalStrut(8));
-        body.add(buildSpecRow("Base Rate",  "\u20B1" + String.format("%,.2f", base)));
+        body.add(buildSpecRow("Base Rate", "\u20B1" + String.format("%,.2f", base)));
         body.add(buildSpecRow("VAT (12%)", "\u20B1" + String.format("%,.2f", tax)));
         body.add(Box.createVerticalStrut(4));
 
@@ -614,25 +660,24 @@ public class BrowseCarsGUI extends JPanel {
         body.add(totalRow);
         body.add(Box.createVerticalStrut(16));
 
-        // Availability
         body.add(buildSectionHeader("Availability"));
         body.add(Box.createVerticalStrut(8));
         if ("AVAILABLE".equals(car.getStatus())) {
-            body.add(buildSpecRow("Status",         "Available now"));
+            body.add(buildSpecRow("Status",        "Available now"));
             body.add(buildSpecRow("Next Available", "\u2014"));
         } else if ("RENTED".equals(car.getStatus())) {
-            body.add(buildSpecRow("Status",         "Currently rented"));
+            body.add(buildSpecRow("Status",        "Currently rented"));
             body.add(buildSpecRow("Available From", "TODO: check rentals"));
         } else {
-            body.add(buildSpecRow("Status",         "Under maintenance"));
+            body.add(buildSpecRow("Status",        "Under maintenance"));
             body.add(buildSpecRow("Available From", "TBD"));
         }
         body.add(Box.createVerticalStrut(24));
 
-        // Rent Now button
         boolean available = "AVAILABLE".equals(car.getStatus());
         JButton rentBtn = new JButton(available ? "Rent Now" : "Not Available") {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getBackground());
@@ -709,13 +754,14 @@ public class BrowseCarsGUI extends JPanel {
         Color bg, fg;
         String text;
         switch (status) {
-            case "AVAILABLE"   -> { bg = new Color(220,252,231); fg = CLR_GREEN;              text = "\u25CF Available";   }
-            case "RENTED"      -> { bg = new Color(254,226,226); fg = CLR_RED;                text = "\u25CF Rented Out";  }
-            case "MAINTENANCE" -> { bg = new Color(229,231,235); fg = new Color(107,114,128); text = "\u25CF Unavailable"; }
-            default            -> { bg = new Color(229,231,235); fg = CLR_GRAY;               text = "\u25CF Unknown";     }
+            case "AVAILABLE"   -> { bg = new Color(220, 252, 231); fg = CLR_GREEN; text = "\u25CF Available";  }
+            case "RENTED"      -> { bg = new Color(254, 226, 226); fg = CLR_RED;   text = "\u25CF Rented Out"; }
+            case "MAINTENANCE" -> { bg = new Color(229, 231, 235); fg = new Color(107, 114, 128); text = "\u25CF Unavailable"; }
+            default            -> { bg = new Color(229, 231, 235); fg = CLR_GRAY;  text = "\u25CF Unknown";    }
         }
         JPanel badge = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
+            @Override
+            protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(bg);
@@ -736,29 +782,26 @@ public class BrowseCarsGUI extends JPanel {
     }
 
     // ====================================================
-    //  IMAGE LOADER — supports local paths AND https:// URLs
+    //  IMAGE LOADER
     // ====================================================
+
     /**
-     * Loads an image from either a local file path or an HTTPS URL.
-     * Returns null if the path is blank, invalid, or the load fails.
-     * @param path  local file path or full https:// URL
-     * @param w     target width in pixels
-     * @param h     target height in pixels
+     * Loads a raw BufferedImage from assets/images/<filename>.
+     * No pre-scaling — paintComponent handles cover scaling at runtime.
+     * Returns null if filename is blank, file not found, or read fails.
      */
-    private ImageIcon loadImage(String path, int w, int h) {
-        if (path == null || path.isBlank()) return null;
+    private BufferedImage loadImageRaw(String filename) {
+        if (filename == null || filename.isBlank()) return null;
         try {
-            BufferedImage img;
-            if (path.startsWith("http://") || path.startsWith("https://")) {
-                img = ImageIO.read(new URL(path));
-            } else {
-                img = ImageIO.read(new java.io.File(path));
+            File file = new File("assets/images/" + filename);
+            if (!file.exists()) {
+                System.err.println("[BrowseCarsGUI] Image not found: " + file.getAbsolutePath());
+                return null;
             }
-            if (img == null) return null;
-            java.awt.Image scaled = img.getScaledInstance(w, h, java.awt.Image.SCALE_SMOOTH);
-            return new ImageIcon(scaled);
-        } catch (IOException e) {
-            System.err.println("[BrowseCarsGUI] Failed to load image: " + path + " — " + e.getMessage());
+            return ImageIO.read(file);
+        } catch (Exception e) {
+            System.err.println("[BrowseCarsGUI] Error loading image: " + filename);
+            e.printStackTrace();
             return null;
         }
     }
@@ -784,24 +827,24 @@ public class BrowseCarsGUI extends JPanel {
     // ====================================================
     public void filterByType(String type) {
         List<Car> filtered = allCars.stream()
-            .filter(c -> c.getCategory().equalsIgnoreCase(type))
-            .toList();
+                .filter(c -> c.getCategory().equalsIgnoreCase(type))
+                .toList();
         populateGrid(filtered);
         closeDetailIfOpen();
     }
 
     public void filterByBrand(String brand) {
         List<Car> filtered = allCars.stream()
-            .filter(c -> c.getBrand().equalsIgnoreCase(brand))
-            .toList();
+                .filter(c -> c.getBrand().equalsIgnoreCase(brand))
+                .toList();
         populateGrid(filtered);
         closeDetailIfOpen();
     }
 
     public void filterByPriceRange(String range) {
         List<Car> filtered = allCars.stream()
-            .filter(c -> matchesPriceRange(c.getDailyRate(), range))
-            .toList();
+                .filter(c -> matchesPriceRange(c.getDailyRate(), range))
+                .toList();
         populateGrid(filtered);
         closeDetailIfOpen();
     }
@@ -812,13 +855,16 @@ public class BrowseCarsGUI extends JPanel {
     }
 
     private void filterCards(String query) {
-        if (query.isBlank()) { populateGrid(allCars); return; }
+        if (query.isBlank()) {
+            populateGrid(allCars);
+            return;
+        }
         String q = query.toLowerCase();
         List<Car> filtered = allCars.stream()
-            .filter(c -> c.getBrand().toLowerCase().contains(q)
-                      || c.getModel().toLowerCase().contains(q)
-                      || c.getPlateNumber().toLowerCase().contains(q))
-            .toList();
+                .filter(c -> c.getBrand().toLowerCase().contains(q)
+                        || c.getModel().toLowerCase().contains(q)
+                        || c.getPlateNumber().toLowerCase().contains(q))
+                .toList();
         populateGrid(filtered);
         closeDetailIfOpen();
     }
@@ -826,10 +872,10 @@ public class BrowseCarsGUI extends JPanel {
     private boolean matchesPriceRange(BigDecimal rate, String range) {
         double r = rate.doubleValue();
         return switch (range) {
-            case "Under \u20B11,000"                   -> r < 1000;
-            case "\u20B11,000 \u2013 \u20B12,000"      -> r >= 1000 && r <= 2000;
-            case "Above \u20B12,000"                   -> r > 2000;
-            default                                    -> true;
+            case "Under \u20B11,000"              -> r < 1000;
+            case "\u20B11,000 \u2013 \u20B12,000" -> r >= 1000 && r <= 2000;
+            case "Above \u20B12,000"              -> r > 2000;
+            default -> true;
         };
     }
 

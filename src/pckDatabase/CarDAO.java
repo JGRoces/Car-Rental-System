@@ -1,6 +1,5 @@
 package pckDatabase;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -38,6 +37,7 @@ public class CarDAO {
     //  Shared helper — map a ResultSet row to a Car
     // ─────────────────────────────────────────────
     private Car mapRow(ResultSet rs) throws SQLException {
+        // This assumes your Car model constructor has a String field at the end for imagePath
         return new Car(
             rs.getInt("car_id"),
             rs.getString("brand"),
@@ -54,21 +54,20 @@ public class CarDAO {
     }
 
     // ====================================================
-    //  READ — Get all cars
+    //  READ — Get all cars (Refactored for consistency)
     // ====================================================
     public List<Car> getAllCars() {
         List<Car> cars = new ArrayList<>();
-        String sql = "SELECT * FROM cars ORDER BY brand, model";
-
+        String sql = "SELECT * FROM cars";
+        
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            ResultSet rs = pstmt.executeQuery()) {
+            
             while (rs.next()) {
-                cars.add(mapRow(rs));
+                // Using mapRow here ensures you don't miss the image_path
+                cars.add(mapRow(rs)); 
             }
-            System.out.println("[CarDAO] getAllCars() → " + cars.size() + " rows");
-
         } catch (SQLException e) {
             System.err.println("[CarDAO] ERROR in getAllCars(): " + e.getMessage());
             e.printStackTrace();
