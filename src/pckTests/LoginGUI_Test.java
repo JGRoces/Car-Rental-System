@@ -1,7 +1,5 @@
 package pckTests;
 
-import com.formdev.flatlaf.FlatDarkLaf;
-
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
@@ -10,33 +8,15 @@ import java.awt.geom.RoundRectangle2D;
 
 /**
  * LoginGUI_Test.java
- * Mock LoginGUI using FlatLaf for native Windows animations + custom title bar.
+ * Mock LoginGUI with dark/light mode toggle via ThemeManager.
  *
- * FlatLaf replaces the default Java Look and Feel. Calling
- * FlatDarkLaf.setup() before creating any JFrame is all that's needed —
- * it handles the DWM wiring automatically.
+ * The sun/moon toggle button in the top-right of the right panel
+ * calls ThemeManager.toggleTheme() — all registered components
+ * (including the CustomTitleBar) update automatically.
  */
 public class LoginGUI_Test extends JFrame {
 
-    // -------------------------
-    // Color Palette
-    // -------------------------
-    private static final Color CLR_BG         = new Color(245, 245, 245);
-    private static final Color CLR_WHITE      = Color.WHITE;
-    private static final Color CLR_IMAGE_BG   = new Color(20, 20, 20);
-    private static final Color CLR_IMAGE_TEXT = new Color(60, 60, 60);
-    private static final Color CLR_BLACK      = new Color(18, 18, 18);
-    private static final Color CLR_GRAY       = new Color(120, 120, 120);
-    private static final Color CLR_BORDER     = new Color(220, 220, 220);
-    private static final Color CLR_BLUE       = new Color(37, 99, 235);
-    private static final Color CLR_BLUE_HOVER = new Color(29, 78, 216);
-    private static final Color CLR_GREEN      = new Color(22, 163, 74);
-    private static final Color CLR_YELLOW     = new Color(234, 179, 8);
-    private static final Color CLR_RED        = new Color(220, 38, 38);
-
-    // -------------------------
-    // Fonts
-    // -------------------------
+    // Fonts (same in both themes)
     private static final Font FONT_TITLE     = new Font("Segoe UI", Font.BOLD,  28);
     private static final Font FONT_SUBTITLE  = new Font("Segoe UI", Font.PLAIN, 13);
     private static final Font FONT_LABEL     = new Font("Segoe UI", Font.BOLD,  12);
@@ -45,21 +25,29 @@ public class LoginGUI_Test extends JFrame {
     private static final Font FONT_FOOTER    = new Font("Segoe UI", Font.PLAIN, 11);
     private static final Font FONT_IMG_TITLE = new Font("Segoe UI", Font.BOLD,  22);
     private static final Font FONT_IMG_SUB   = new Font("Segoe UI", Font.PLAIN, 13);
+    private static final Font FONT_TOGGLE    = new Font("Segoe UI", Font.BOLD,  13);
 
     // -------------------------
-    // Components
+    // All panels and components
+    // that need repainting on theme change
     // -------------------------
+    private JPanel     rootPanel, leftPanel, rightPanel;
+    private JPanel     innerLeft, imgPlaceholder, accentBar;
+    private JPanel     formPanel;
+    private JLabel     brandLabel, taglineLabel;
+    private JLabel     titleLabel, subtitleLabel, footerLabel;
     private JTextField     emailField;
     private JPasswordField passwordField;
-    private JButton        loginButton;
-    private JLabel         statusLabel;
-    private JCheckBox      showPasswordBox;
+    private JLabel     emailLbl, passwordLbl;
+    private JLabel     statusLabel;
+    private JCheckBox  showPasswordBox;
+    private JButton    loginButton, themeToggleBtn;
+    private JSeparator separator;
 
     // -------------------------
-    // Entry point
+    // Entry Point
     // -------------------------
     public static void main(String[] args) {
-        FlatDarkLaf.setup(); // FIX 1: Must be called before any Swing component is created
         SwingUtilities.invokeLater(() -> {
             LoginGUI_Test frame = new LoginGUI_Test();
             frame.setVisible(true);
@@ -72,105 +60,98 @@ public class LoginGUI_Test extends JFrame {
     public LoginGUI_Test() {
         initWindow();
         initComponents();
+        applyTheme();  // Paint initial theme after all components exist
+
+        // Register — repaints everything when theme toggles
+        ThemeManager.addListener(this::applyTheme);
     }
 
     // -------------------------
     // Window Setup
-    // FlatLaf requires these RootPane properties to take over the title bar
     // -------------------------
     private void initWindow() {
-        // Tell FlatLaf to use custom window decorations
-        // This removes the default Windows title bar and hands control to FlatLaf
-        getRootPane().putClientProperty("JRootPane.titleBarBackground",  new Color(18, 18, 18));
-        getRootPane().putClientProperty("JRootPane.titleBarForeground",  Color.WHITE);
-        getRootPane().putClientProperty("JRootPane.titleBarShowTitle",   false);  // Hide default title text
-        getRootPane().putClientProperty("JRootPane.titleBarHeight",      0);      // Zero height — we draw our own
-
-        setTitle("Car Rental System — Login");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setUndecorated(true);
         setSize(1200, 800);
         setResizable(false);
         setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
-        getContentPane().setBackground(CLR_BG);
+        try {
+            setShape(new RoundRectangle2D.Double(0, 0, 1200, 800, 12, 12));
+        } catch (UnsupportedOperationException ignored) {}
     }
 
     // -------------------------
     // Build Layout
     // -------------------------
     private void initComponents() {
-
-        // Custom title bar sits at the very top
         add(new CustomTitleBar(this, "Car Rental System — Login"), BorderLayout.NORTH);
 
-        // Root split panel — LEFT 60% / RIGHT 40%
-        JPanel root = new JPanel(new GridBagLayout());
-        root.setBackground(CLR_IMAGE_BG);
+        rootPanel = new JPanel(new GridBagLayout());
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill    = GridBagConstraints.BOTH;
         gbc.weighty = 1.0;
 
-        gbc.weightx = 0.6;
-        gbc.gridx   = 0;
-        root.add(buildLeftPanel(), gbc);
+        gbc.weightx = 0.6; gbc.gridx = 0;
+        rootPanel.add(buildLeftPanel(), gbc);
 
-        gbc.weightx = 0.4;
-        gbc.gridx   = 1;
-        root.add(buildRightPanel(), gbc);
+        gbc.weightx = 0.4; gbc.gridx = 1;
+        rootPanel.add(buildRightPanel(), gbc);
 
-        add(root, BorderLayout.CENTER);
+        add(rootPanel, BorderLayout.CENTER);
     }
 
     // -------------------------
-    // LEFT — Image Panel
+    // LEFT Panel
     // -------------------------
     private JPanel buildLeftPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(CLR_IMAGE_BG);
+        leftPanel = new JPanel(new GridBagLayout());
 
-        JPanel inner = new JPanel();
-        inner.setLayout(new BoxLayout(inner, BoxLayout.Y_AXIS));
-        inner.setBackground(CLR_IMAGE_BG);
-        inner.setBorder(new EmptyBorder(0, 52, 0, 52));
+        innerLeft = new JPanel();
+        innerLeft.setLayout(new BoxLayout(innerLeft, BoxLayout.Y_AXIS));
+        innerLeft.setOpaque(false);
+        innerLeft.setBorder(new EmptyBorder(0, 52, 0, 52));
 
-        JPanel accentBar = new JPanel(new GridLayout(1, 4, 3, 0));
-        accentBar.setBackground(CLR_IMAGE_BG);
+        // Accent bar
+        accentBar = new JPanel(new GridLayout(1, 4, 3, 0));
+        accentBar.setOpaque(false);
         accentBar.setMaximumSize(new Dimension(80, 5));
         accentBar.setAlignmentX(Component.LEFT_ALIGNMENT);
-        for (Color c : new Color[]{ CLR_BLUE, CLR_GREEN, CLR_YELLOW, CLR_RED }) {
+        for (Color c : new Color[]{
+                ThemeManager.CLR_BLUE, ThemeManager.CLR_GREEN,
+                ThemeManager.CLR_YELLOW, ThemeManager.CLR_RED }) {
             JPanel seg = new JPanel();
             seg.setBackground(c);
             accentBar.add(seg);
         }
-        inner.add(accentBar);
-        inner.add(Box.createVerticalStrut(24));
+        innerLeft.add(accentBar);
+        innerLeft.add(Box.createVerticalStrut(24));
 
-        JLabel brandLabel = new JLabel("CarRentals");
+        brandLabel = new JLabel("CarRentals");
         brandLabel.setFont(FONT_IMG_TITLE);
         brandLabel.setForeground(Color.WHITE);
         brandLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        inner.add(brandLabel);
-        inner.add(Box.createVerticalStrut(10));
+        innerLeft.add(brandLabel);
+        innerLeft.add(Box.createVerticalStrut(10));
 
-        JLabel tagline = new JLabel(
+        taglineLabel = new JLabel(
             "<html>Your trusted platform for<br>seamless car rental management.</html>");
-        tagline.setFont(FONT_IMG_SUB);
-        tagline.setForeground(CLR_IMAGE_TEXT);
-        tagline.setAlignmentX(Component.LEFT_ALIGNMENT);
-        inner.add(tagline);
-        inner.add(Box.createVerticalStrut(40));
+        taglineLabel.setFont(FONT_IMG_SUB);
+        taglineLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        innerLeft.add(taglineLabel);
+        innerLeft.add(Box.createVerticalStrut(40));
 
-        JPanel imgPlaceholder = new JPanel(new GridBagLayout());
-        imgPlaceholder.setBackground(new Color(32, 32, 32));
-        imgPlaceholder.setBorder(new LineBorder(new Color(45, 45, 45), 1, true));
+        // Image placeholder
+        imgPlaceholder = new JPanel(new GridBagLayout());
+        imgPlaceholder.setBorder(BorderFactory.createLineBorder(new Color(45, 45, 45), 1));
         imgPlaceholder.setMaximumSize(new Dimension(Integer.MAX_VALUE, 400));
         imgPlaceholder.setPreferredSize(new Dimension(560, 400));
         imgPlaceholder.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel phText = new JPanel();
         phText.setLayout(new BoxLayout(phText, BoxLayout.Y_AXIS));
-        phText.setBackground(new Color(32, 32, 32));
+        phText.setOpaque(false);
 
         JLabel iconLbl = new JLabel("[ IMAGE ]");
         iconLbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -186,130 +167,249 @@ public class LoginGUI_Test extends JFrame {
         phText.add(hintLbl);
 
         imgPlaceholder.add(phText);
-        inner.add(imgPlaceholder);
+        innerLeft.add(imgPlaceholder);
+        leftPanel.add(innerLeft);
 
-        panel.add(inner);
-        return panel;
+        return leftPanel;
     }
 
     // -------------------------
-    // RIGHT — Login Form
+    // RIGHT Panel
     // -------------------------
     private JPanel buildRightPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(CLR_WHITE);
+        rightPanel = new JPanel(new GridBagLayout());
 
-        JPanel form = new JPanel();
-        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-        form.setBackground(CLR_WHITE);
-        form.setBorder(new EmptyBorder(0, 52, 0, 52));
-        form.setPreferredSize(new Dimension(380, 600));
+        formPanel = new JPanel();
+        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
+        formPanel.setOpaque(false);
+        formPanel.setBorder(new EmptyBorder(0, 52, 0, 52));
+        formPanel.setPreferredSize(new Dimension(380, 600));
 
-        JLabel titleLabel = new JLabel("Welcome Back");
+        // Theme toggle button — top right of form
+        JPanel topRow = new JPanel(new BorderLayout());
+        topRow.setOpaque(false);
+        topRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        topRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        themeToggleBtn = new JButton() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                                    RenderingHints.VALUE_ANTIALIAS_ON);
+                // Pill background
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
+                // Icon: sun (light mode) or moon (dark mode)
+                g2.setColor(getForeground());
+                int cx = getWidth() / 2, cy = getHeight() / 2, r = 6;
+                if (ThemeManager.isDark()) {
+                    // Moon shape — circle with a smaller circle cut out
+                    g2.setStroke(new BasicStroke(1.5f));
+                    g2.drawOval(cx - r, cy - r, r * 2, r * 2);
+                    g2.setColor(getBackground());
+                    g2.fillOval(cx - r + 4, cy - r - 2, r * 2 - 2, r * 2 - 2);
+                } else {
+                    // Sun — circle + rays
+                    g2.setStroke(new BasicStroke(1.5f));
+                    g2.drawOval(cx - r + 2, cy - r + 2, (r - 2) * 2, (r - 2) * 2);
+                    for (int i = 0; i < 8; i++) {
+                        double angle = Math.toRadians(i * 45);
+                        int x1 = (int)(cx + Math.cos(angle) * (r + 1));
+                        int y1 = (int)(cy + Math.sin(angle) * (r + 1));
+                        int x2 = (int)(cx + Math.cos(angle) * (r + 4));
+                        int y2 = (int)(cy + Math.sin(angle) * (r + 4));
+                        g2.drawLine(x1, y1, x2, y2);
+                    }
+                }
+                g2.dispose();
+            }
+        };
+        themeToggleBtn.setPreferredSize(new Dimension(36, 36));
+        themeToggleBtn.setBorderPainted(false);
+        themeToggleBtn.setContentAreaFilled(false);
+        themeToggleBtn.setFocusPainted(false);
+        themeToggleBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        themeToggleBtn.addActionListener(e -> ThemeManager.toggleTheme());
+
+        topRow.add(themeToggleBtn, BorderLayout.EAST);
+        formPanel.add(topRow);
+        formPanel.add(Box.createVerticalStrut(8));
+
+        titleLabel = new JLabel("Welcome Back");
         titleLabel.setFont(FONT_TITLE);
-        titleLabel.setForeground(CLR_BLACK);
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        form.add(titleLabel);
-        form.add(Box.createVerticalStrut(6));
+        formPanel.add(titleLabel);
+        formPanel.add(Box.createVerticalStrut(6));
 
-        JLabel subtitleLabel = new JLabel("Sign in to continue");
+        subtitleLabel = new JLabel("Sign in to continue");
         subtitleLabel.setFont(FONT_SUBTITLE);
-        subtitleLabel.setForeground(CLR_GRAY);
         subtitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        form.add(subtitleLabel);
-        form.add(Box.createVerticalStrut(36));
+        formPanel.add(subtitleLabel);
+        formPanel.add(Box.createVerticalStrut(36));
 
-        form.add(buildLabel("Email Address"));
-        form.add(Box.createVerticalStrut(6));
+        emailLbl = buildLabel("Email Address");
+        formPanel.add(emailLbl);
+        formPanel.add(Box.createVerticalStrut(6));
         emailField = buildTextField("Enter your email");
-        form.add(emailField);
-        form.add(Box.createVerticalStrut(20));
+        formPanel.add(emailField);
+        formPanel.add(Box.createVerticalStrut(20));
 
-        form.add(buildLabel("Password"));
-        form.add(Box.createVerticalStrut(6));
+        passwordLbl = buildLabel("Password");
+        formPanel.add(passwordLbl);
+        formPanel.add(Box.createVerticalStrut(6));
         passwordField = buildPasswordField("Enter your password");
-        form.add(passwordField);
-        form.add(Box.createVerticalStrut(10));
+        formPanel.add(passwordField);
+        formPanel.add(Box.createVerticalStrut(10));
 
         showPasswordBox = new JCheckBox("Show password");
         showPasswordBox.setFont(FONT_FOOTER);
-        showPasswordBox.setForeground(CLR_GRAY);
-        showPasswordBox.setBackground(CLR_WHITE);
+        showPasswordBox.setOpaque(false);
         showPasswordBox.setAlignmentX(Component.LEFT_ALIGNMENT);
         showPasswordBox.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        showPasswordBox.addActionListener(e -> togglePasswordVisibility());
-        form.add(showPasswordBox);
-        form.add(Box.createVerticalStrut(24));
+        showPasswordBox.addActionListener(e -> {
+            String pw = String.valueOf(passwordField.getPassword());
+            if (!pw.equals("Enter your password"))
+                passwordField.setEchoChar(showPasswordBox.isSelected() ? (char) 0 : '•');
+        });
+        formPanel.add(showPasswordBox);
+        formPanel.add(Box.createVerticalStrut(24));
 
         statusLabel = new JLabel(" ");
         statusLabel.setFont(FONT_FOOTER);
-        statusLabel.setForeground(CLR_RED);
+        statusLabel.setForeground(ThemeManager.CLR_RED);
         statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        form.add(statusLabel);
-        form.add(Box.createVerticalStrut(8));
+        formPanel.add(statusLabel);
+        formPanel.add(Box.createVerticalStrut(8));
 
         loginButton = buildLoginButton();
-        form.add(loginButton);
-        form.add(Box.createVerticalStrut(28));
+        formPanel.add(loginButton);
+        formPanel.add(Box.createVerticalStrut(28));
 
-        JSeparator sep = new JSeparator();
-        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-        sep.setForeground(CLR_BORDER);
-        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
-        form.add(sep);
-        form.add(Box.createVerticalStrut(20));
+        separator = new JSeparator();
+        separator.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        separator.setAlignmentX(Component.LEFT_ALIGNMENT);
+        formPanel.add(separator);
+        formPanel.add(Box.createVerticalStrut(20));
 
-        JLabel footerLabel = new JLabel("Car Rental System  •  v1.0  •  TEST BUILD");
+        footerLabel = new JLabel("Car Rental System  •  v1.0  •  TEST BUILD");
         footerLabel.setFont(FONT_FOOTER);
-        footerLabel.setForeground(CLR_BORDER);
         footerLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        form.add(footerLabel);
+        formPanel.add(footerLabel);
 
-        panel.add(form);
-        return panel;
+        rightPanel.add(formPanel);
+        return rightPanel;
+    }
+
+    // ====================================================
+    //  THEME APPLICATION
+    //  Called on init and every time ThemeManager fires.
+    //  Update every component's colors here.
+    // ====================================================
+    private void applyTheme() {
+        boolean dark = ThemeManager.isDark();
+
+        // Root + left panel — always dark (image panel)
+        if (rootPanel   != null) rootPanel.setBackground(new Color(20, 20, 20));
+        if (leftPanel   != null) leftPanel.setBackground(new Color(20, 20, 20));
+        if (imgPlaceholder != null) imgPlaceholder.setBackground(new Color(32, 32, 32));
+
+        // Brand text — always white on dark left panel
+        if (brandLabel  != null) brandLabel.setForeground(Color.WHITE);
+        if (taglineLabel!= null) taglineLabel.setForeground(new Color(60, 60, 60));
+
+        // Right panel — switches with theme
+        Color panelBg = dark ? new Color(28, 28, 28) : Color.WHITE;
+        if (rightPanel  != null) rightPanel.setBackground(panelBg);
+
+        // Titles
+        if (titleLabel    != null) titleLabel.setForeground(ThemeManager.getTextPrimary());
+        if (subtitleLabel != null) subtitleLabel.setForeground(ThemeManager.getTextSecondary());
+        if (emailLbl      != null) emailLbl.setForeground(ThemeManager.getTextPrimary());
+        if (passwordLbl   != null) passwordLbl.setForeground(ThemeManager.getTextPrimary());
+        if (footerLabel   != null) footerLabel.setForeground(ThemeManager.getBorder());
+
+        // Checkbox
+        if (showPasswordBox != null) {
+            showPasswordBox.setForeground(ThemeManager.getTextSecondary());
+        }
+
+        // Separator
+        if (separator != null) separator.setForeground(ThemeManager.getBorder());
+
+        // Input fields
+        Color inputBg     = ThemeManager.getInputBg();
+        Color inputBorder = ThemeManager.getBorder();
+        Color inputFg     = dark ? new Color(200, 200, 200) : new Color(18, 18, 18);
+        for (JTextField field : new JTextField[]{ emailField, passwordField }) {
+            if (field != null) {
+                field.setBackground(inputBg);
+                field.setForeground(inputFg);
+                field.setCaretColor(inputFg);
+                field.setBorder(BorderFactory.createCompoundBorder(
+                    new LineBorder(inputBorder, 1, true),
+                    new EmptyBorder(6, 12, 6, 12)
+                ));
+            }
+        }
+
+        // Theme toggle button
+        if (themeToggleBtn != null) {
+            themeToggleBtn.setBackground(dark ? new Color(45, 45, 45) : new Color(230, 230, 230));
+            themeToggleBtn.setForeground(dark ? new Color(200, 200, 200) : new Color(80, 80, 80));
+            themeToggleBtn.repaint();
+        }
+
+        // Login button stays blue always
+        if (loginButton != null) {
+            loginButton.setBackground(ThemeManager.CLR_BLUE);
+            loginButton.setForeground(Color.WHITE);
+        }
+
+        repaint();
+        revalidate();
     }
 
     // -------------------------
     // Component Builders
     // -------------------------
     private JLabel buildLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(FONT_LABEL);
-        label.setForeground(CLR_BLACK);
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return label;
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(FONT_LABEL);
+        lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return lbl;
     }
 
     private JTextField buildTextField(String placeholder) {
         JTextField field = new JTextField();
         field.setFont(FONT_INPUT);
-        field.setForeground(CLR_GRAY);
-        field.setBackground(CLR_WHITE);
+        field.setForeground(ThemeManager.getTextPlaceholder());
+        field.setBackground(ThemeManager.getInputBg());
         field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
         field.setAlignmentX(Component.LEFT_ALIGNMENT);
         field.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(CLR_BORDER, 1, true),
+            new LineBorder(ThemeManager.getBorder(), 1, true),
             new EmptyBorder(6, 12, 6, 12)
         ));
         field.setText(placeholder);
+
         field.addFocusListener(new FocusAdapter() {
             @Override public void focusGained(FocusEvent e) {
                 if (field.getText().equals(placeholder)) {
                     field.setText("");
-                    field.setForeground(CLR_BLACK);
+                    field.setForeground(ThemeManager.getTextPrimary());
                 }
                 field.setBorder(BorderFactory.createCompoundBorder(
-                    new LineBorder(CLR_BLUE, 1, true),
+                    new LineBorder(ThemeManager.CLR_BLUE, 1, true),
                     new EmptyBorder(6, 12, 6, 12)
                 ));
             }
             @Override public void focusLost(FocusEvent e) {
                 if (field.getText().isEmpty()) {
-                    field.setForeground(CLR_GRAY);
+                    field.setForeground(ThemeManager.getTextPlaceholder());
                     field.setText(placeholder);
                 }
                 field.setBorder(BorderFactory.createCompoundBorder(
-                    new LineBorder(CLR_BORDER, 1, true),
+                    new LineBorder(ThemeManager.getBorder(), 1, true),
                     new EmptyBorder(6, 12, 6, 12)
                 ));
             }
@@ -320,36 +420,37 @@ public class LoginGUI_Test extends JFrame {
     private JPasswordField buildPasswordField(String placeholder) {
         JPasswordField field = new JPasswordField();
         field.setFont(FONT_INPUT);
-        field.setForeground(CLR_GRAY);
-        field.setBackground(CLR_WHITE);
+        field.setForeground(ThemeManager.getTextPlaceholder());
+        field.setBackground(ThemeManager.getInputBg());
         field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
         field.setAlignmentX(Component.LEFT_ALIGNMENT);
         field.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(CLR_BORDER, 1, true),
+            new LineBorder(ThemeManager.getBorder(), 1, true),
             new EmptyBorder(6, 12, 6, 12)
         ));
         field.setEchoChar((char) 0);
         field.setText(placeholder);
+
         field.addFocusListener(new FocusAdapter() {
             @Override public void focusGained(FocusEvent e) {
                 if (String.valueOf(field.getPassword()).equals(placeholder)) {
                     field.setText("");
-                    field.setForeground(CLR_BLACK);
+                    field.setForeground(ThemeManager.getTextPrimary());
                     field.setEchoChar('•');
                 }
                 field.setBorder(BorderFactory.createCompoundBorder(
-                    new LineBorder(CLR_BLUE, 1, true),
+                    new LineBorder(ThemeManager.CLR_BLUE, 1, true),
                     new EmptyBorder(6, 12, 6, 12)
                 ));
             }
             @Override public void focusLost(FocusEvent e) {
                 if (field.getPassword().length == 0) {
                     field.setEchoChar((char) 0);
-                    field.setForeground(CLR_GRAY);
+                    field.setForeground(ThemeManager.getTextPlaceholder());
                     field.setText(placeholder);
                 }
                 field.setBorder(BorderFactory.createCompoundBorder(
-                    new LineBorder(CLR_BORDER, 1, true),
+                    new LineBorder(ThemeManager.getBorder(), 1, true),
                     new EmptyBorder(6, 12, 6, 12)
                 ));
             }
@@ -372,7 +473,7 @@ public class LoginGUI_Test extends JFrame {
         };
         btn.setFont(FONT_BUTTON);
         btn.setForeground(Color.WHITE);
-        btn.setBackground(CLR_BLUE);
+        btn.setBackground(ThemeManager.CLR_BLUE);
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
         btn.setBorderPainted(false);
@@ -380,105 +481,32 @@ public class LoginGUI_Test extends JFrame {
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { btn.setBackground(CLR_BLUE_HOVER); }
-            @Override public void mouseExited(MouseEvent e)  { btn.setBackground(CLR_BLUE);       }
+            @Override public void mouseEntered(MouseEvent e) { btn.setBackground(ThemeManager.CLR_BLUE_HOVER); }
+            @Override public void mouseExited(MouseEvent e)  { btn.setBackground(ThemeManager.CLR_BLUE);       }
         });
         btn.addActionListener(e -> handleLogin());
         return btn;
     }
 
     // -------------------------
-    // Actions
+    // Login Action
     // -------------------------
-    private void togglePasswordVisibility() {
-        String current = String.valueOf(passwordField.getPassword());
-        if (!current.equals("Enter your password")) {
-            passwordField.setEchoChar(showPasswordBox.isSelected() ? (char) 0 : '•');
-        }
-    }
-
     private void handleLogin() {
         String email    = emailField.getText().trim();
         String password = String.valueOf(passwordField.getPassword());
 
         if (email.isEmpty() || email.equals("Enter your email") ||
             password.isEmpty() || password.equals("Enter your password")) {
-            setStatus("Please fill in all fields.", CLR_RED);
+            statusLabel.setText("Please fill in all fields.");
+            statusLabel.setForeground(ThemeManager.CLR_RED);
             return;
         }
         if (!email.contains("@") || !email.contains(".")) {
-            setStatus("Please enter a valid email address.", CLR_RED);
+            statusLabel.setText("Please enter a valid email address.");
+            statusLabel.setForeground(ThemeManager.CLR_RED);
             return;
         }
-        setStatus("✓ UI test — login flow works.", CLR_GREEN);
-    }
-
-    private void setStatus(String message, Color color) {
-        statusLabel.setText(message);
-        statusLabel.setForeground(color);
-    }
-
-    // =========================================================
-    // FIX 2: CustomTitleBar — was missing, caused compile error
-    // =========================================================
-    private static class CustomTitleBar extends JPanel {
-
-        private Point dragStart;
-
-        public CustomTitleBar(JFrame owner, String title) {
-            setBackground(new Color(18, 18, 18));
-            setPreferredSize(new Dimension(0, 36));
-            setLayout(new BorderLayout());
-
-            // Title label
-            JLabel titleLabel = new JLabel("  " + title);
-            titleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-            titleLabel.setForeground(Color.WHITE);
-            add(titleLabel, BorderLayout.CENTER);
-
-            // Window controls (minimize, close)
-            JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-            controls.setBackground(new Color(18, 18, 18));
-            controls.add(makeTitleBarButton("—", new Color(18, 18, 18), new Color(50, 50, 50),
-                    e -> owner.setState(Frame.ICONIFIED)));
-            controls.add(makeTitleBarButton("✕", new Color(18, 18, 18), new Color(196, 43, 28),
-                    e -> System.exit(0)));
-            add(controls, BorderLayout.EAST);
-
-            // Drag-to-move
-            addMouseListener(new MouseAdapter() {
-                @Override public void mousePressed(MouseEvent e) {
-                    dragStart = e.getPoint();
-                }
-            });
-            addMouseMotionListener(new MouseMotionAdapter() {
-                @Override public void mouseDragged(MouseEvent e) {
-                    Point loc = owner.getLocation();
-                    owner.setLocation(
-                        loc.x + e.getX() - dragStart.x,
-                        loc.y + e.getY() - dragStart.y
-                    );
-                }
-            });
-        }
-
-        private JButton makeTitleBarButton(String text, Color bg, Color hover, ActionListener action) {
-            JButton btn = new JButton(text);
-            btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-            btn.setForeground(Color.WHITE);
-            btn.setBackground(bg);
-            btn.setFocusPainted(false);
-            btn.setBorderPainted(false);
-            btn.setContentAreaFilled(false);
-            btn.setOpaque(true);
-            btn.setPreferredSize(new Dimension(46, 36));
-            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            btn.addMouseListener(new MouseAdapter() {
-                @Override public void mouseEntered(MouseEvent e) { btn.setBackground(hover); }
-                @Override public void mouseExited(MouseEvent e)  { btn.setBackground(bg);    }
-            });
-            btn.addActionListener(action);
-            return btn;
-        }
+        statusLabel.setText("✓ UI test — login flow works.");
+        statusLabel.setForeground(ThemeManager.CLR_GREEN);
     }
 }

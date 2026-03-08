@@ -2,49 +2,62 @@ package pckModels;
 
 /**
  * Customer.java
- * Extends User to represent a customer account.
- * Maps to the `customers` table (one-to-one with `users`).
+ * Extends User with customer-specific profile data.
+ * Maps to the customers table joined with users.
+ *
+ * users       → userId, fullName, email, password, role
+ * customers   → customerId, phone, photoPath
  */
 public class Customer extends User {
 
     private int    customerId;
-    private String phoneNumber;
-    private String address;
-    private String licenseNumber;
+    private String phone;
+    private String photoPath;   // nullable — profile photo file path
 
-    // New customer — before DB insert
+    // -------------------------
+    // Constructor — new account (no IDs yet, DB generates them)
+    // -------------------------
     public Customer(String fullName, String email, String password,
-                    String phoneNumber, String address, String licenseNumber) {
+                    String phone, String photoPath) {
         super(fullName, email, password, "CUSTOMER");
-        this.phoneNumber   = phoneNumber;
-        this.address       = address;
-        this.licenseNumber = licenseNumber;
+        this.phone     = phone;
+        this.photoPath = photoPath;
     }
 
-    // Loaded from DB — has both userId and customerId
-    public Customer(int userId, String fullName, String email, String password,
-                    int customerId, String phoneNumber, String address, String licenseNumber) {
+    // -------------------------
+    // Constructor — loaded from database (all IDs present)
+    // -------------------------
+    public Customer(int userId, int customerId,
+                    String fullName, String email, String password,
+                    String phone, String photoPath) {
         super(userId, fullName, email, password, "CUSTOMER");
-        this.customerId    = customerId;
-        this.phoneNumber   = phoneNumber;
-        this.address       = address;
-        this.licenseNumber = licenseNumber;
+        this.customerId = customerId;
+        this.phone      = phone;
+        this.photoPath  = photoPath;
     }
 
-    public int    getCustomerId()    { return customerId;    }
-    public String getPhoneNumber()   { return phoneNumber;   }
-    public String getAddress()       { return address;       }
-    public String getLicenseNumber() { return licenseNumber; }
+    // -------------------------
+    // Getters
+    // -------------------------
+    public int    getCustomerId() { return customerId; }
+    public String getPhone()      { return phone;      }
+    public String getPhotoPath()  { return photoPath;  }
 
-    public void setCustomerId(int customerId)      { this.customerId    = customerId;  }
-    public void setPhoneNumber(String phoneNumber) { this.phoneNumber   = phoneNumber; }
-    public void setAddress(String address)         { this.address       = address;     }
-    public void setLicenseNumber(String license)   { this.licenseNumber = license;     }
+    // -------------------------
+    // Setters
+    // -------------------------
+    public void setCustomerId(int customerId) { this.customerId = customerId; }
+    public void setPhone(String phone)        { this.phone      = phone;      }
+    public void setPhotoPath(String path)     { this.photoPath  = path;       }
 
     @Override
     public String toString() {
-        return "Customer{customerId=" + customerId + ", userId=" + getUserId() +
-               ", fullName='" + getFullName() + "', email='" + getEmail() +
-               "', phone='" + phoneNumber + "', license='" + licenseNumber + "'}";
+        return "Customer{" +
+               "customerId=" + customerId +
+               ", userId="   + getUserId() +
+               ", name='"    + getFullName() + '\'' +
+               ", email='"   + getEmail()    + '\'' +
+               ", phone='"   + phone         + '\'' +
+               '}';
     }
 }
