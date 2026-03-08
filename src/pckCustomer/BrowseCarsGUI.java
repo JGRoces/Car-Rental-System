@@ -16,9 +16,13 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URL;
 import java.util.List;
 
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -32,7 +36,6 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
 import javax.swing.border.MatteBorder;
 
 import pckModels.Car;
@@ -45,7 +48,7 @@ import pckServices.CarService;
  *
  * Layout:
  * ┌──────────────────────────────────────────────────────┐
- * │  "Browse Cars"  +  results count                     │  ← HEADER
+ * │  "Browse Cars"  +  results count      [Refresh]      │  ← HEADER
  * ├──────────────────────────────────────────────────────┤
  * │  🔍 Search bar                                       │  ← SEARCH
  * ├─────────────────────────────────────┬────────────────┤
@@ -58,14 +61,14 @@ public class BrowseCarsGUI extends JPanel {
     // ─────────────────────────────────────────────
     //  Colors
     // ─────────────────────────────────────────────
-    private static final Color CLR_BG       = new Color(245, 245, 245);
-    private static final Color CLR_WHITE    = Color.WHITE;
-    private static final Color CLR_BLACK    = new Color(18, 18, 18);
-    private static final Color CLR_GRAY     = new Color(120, 120, 120);
-    private static final Color CLR_BORDER   = new Color(220, 220, 220);
-    private static final Color CLR_BLUE     = new Color(37, 99, 235);
-    private static final Color CLR_GREEN    = new Color(22, 163, 74);
-    private static final Color CLR_RED      = new Color(220, 38, 38);
+    private static final Color CLR_BG     = new Color(245, 245, 245);
+    private static final Color CLR_WHITE  = Color.WHITE;
+    private static final Color CLR_BLACK  = new Color(18, 18, 18);
+    private static final Color CLR_GRAY   = new Color(120, 120, 120);
+    private static final Color CLR_BORDER = new Color(220, 220, 220);
+    private static final Color CLR_BLUE   = new Color(37, 99, 235);
+    private static final Color CLR_GREEN  = new Color(22, 163, 74);
+    private static final Color CLR_RED    = new Color(220, 38, 38);
 
     // ─────────────────────────────────────────────
     //  Fonts
@@ -80,9 +83,9 @@ public class BrowseCarsGUI extends JPanel {
     // ─────────────────────────────────────────────
     //  Detail panel constants
     // ─────────────────────────────────────────────
-    private static final int DETAIL_WIDTH  = 340;
-    private static final int SLIDE_STEP    = 24;
-    private static final int SLIDE_DELAY   = 10;
+    private static final int DETAIL_WIDTH = 540;
+    private static final int SLIDE_STEP   = 45;
+    private static final int SLIDE_DELAY  = 8;
 
     // ─────────────────────────────────────────────
     //  State
@@ -94,15 +97,15 @@ public class BrowseCarsGUI extends JPanel {
     // ─────────────────────────────────────────────
     //  Components
     // ─────────────────────────────────────────────
-    private JLabel      resultsCountLabel;
-    private JPanel      cardGrid;
-    private JTextField  searchField;
-    private JPanel      bodyPanel;
-    private JPanel      detailPanel;
+    private JLabel     resultsCountLabel;
+    private JPanel     cardGrid;
+    private JTextField searchField;
+    private JPanel     bodyPanel;
+    private JPanel     detailPanel;
+    private JPanel     selectedCardPanel;
 
     // ─────────────────────────────────────────────
     //  Callback — set by CustomerDashboardGUI
-    //  Called when "Rent Now" is clicked
     // ─────────────────────────────────────────────
     private Runnable onRentNow;
     public void setOnRentNow(Runnable r) { this.onRentNow = r; }
@@ -181,7 +184,7 @@ public class BrowseCarsGUI extends JPanel {
         left.add(resultsCountLabel);
 
         // RIGHT — refresh button
-        JButton refreshBtn = new JButton("\uD83D\uDD04  Refresh") {
+        JButton refreshBtn = new JButton("Refresh") {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -193,8 +196,8 @@ public class BrowseCarsGUI extends JPanel {
         };
         refreshBtn.setFont(FONT_BOLD);
         refreshBtn.setForeground(CLR_BLUE);
-        refreshBtn.setBackground(new Color(219, 234, 254)); // CLR_BLUE_LIGHT
-        refreshBtn.setPreferredSize(new Dimension(110, 34));
+        refreshBtn.setBackground(new Color(219, 234, 254));
+        refreshBtn.setPreferredSize(new Dimension(100, 34));
         refreshBtn.setBorderPainted(false);
         refreshBtn.setContentAreaFilled(false);
         refreshBtn.setFocusPainted(false);
@@ -204,10 +207,10 @@ public class BrowseCarsGUI extends JPanel {
             @Override public void mouseExited(MouseEvent e)  { refreshBtn.setBackground(new Color(219, 234, 254)); }
         });
         refreshBtn.addActionListener(e -> {
-            refreshBtn.setText("\uD83D\uDD04  Loading...");
+            refreshBtn.setText("Loading...");
             refreshBtn.setEnabled(false);
             refresh();
-            refreshBtn.setText("\uD83D\uDD04  Refresh");
+            refreshBtn.setText("Refresh");
             refreshBtn.setEnabled(true);
         });
 
@@ -281,12 +284,16 @@ public class BrowseCarsGUI extends JPanel {
     //  CAR CARDS GRID  (5 columns, scrollable)
     // ====================================================
     private JScrollPane buildCardsArea() {
-        cardGrid = new JPanel(new GridLayout(0, 5, 12, 12));
-        cardGrid.setBackground(CLR_BG);
+        cardGrid = new JPanel(new GridLayout(0, 5, 16, 16));        cardGrid.setBackground(CLR_BG);
         cardGrid.setBorder(new EmptyBorder(4, 0, 4, 0));
         populateGrid(allCars);
 
-        JScrollPane scroll = new JScrollPane(cardGrid);
+        // Wrap in NORTH so cards never stretch vertically
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(CLR_BG);
+        wrapper.add(cardGrid, BorderLayout.NORTH);
+
+        JScrollPane scroll = new JScrollPane(wrapper);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.setViewportBorder(null);
         scroll.getViewport().setBackground(CLR_BG);
@@ -308,74 +315,82 @@ public class BrowseCarsGUI extends JPanel {
             for (Car car : cars) cardGrid.add(buildCarCard(car));
         }
         resultsCountLabel.setText(cars.size() + " cars found");
-
-        // Recalculate preferred height so the scroll pane knows how tall the grid is
-        int cols      = 5;
-        int rows      = (int) Math.ceil((double) cars.size() / cols);
-        int cardH     = 280;
-        int gap       = 12;
-        int totalH    = rows * cardH + (rows - 1) * gap + 8; // +8 for border padding
-        cardGrid.setPreferredSize(new Dimension(cardGrid.getWidth(), Math.max(totalH, 300)));
-
         cardGrid.revalidate();
         cardGrid.repaint();
     }
 
     // ====================================================
-    //  SINGLE CAR CARD  (taller — fixed 280px height)
+    //  SINGLE CAR CARD  (fixed 280px height, rounded)
     // ====================================================
     private JPanel buildCarCard(Car car) {
-        boolean available = "AVAILABLE".equals(car.getStatus());
+
+        // cardRef lets paintComponent/paintBorder safely reference the card
+        final JPanel[] cardRef = new JPanel[1];
 
         JPanel card = new JPanel(new BorderLayout()) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
+                g2.setColor(new Color(0, 0, 0, 18));
+                g2.fillRoundRect(3, 4, getWidth() - 4, getHeight() - 4, 20, 20);
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 20, 20));
                 g2.setColor(CLR_WHITE);
-                g2.fill(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 14, 14));
-                g2.dispose();
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2.dispose();            
+            }
+            @Override protected void paintBorder(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                boolean hovered  = Boolean.TRUE.equals(getClientProperty("hovered"));
+                boolean selected = (cardRef[0] == selectedCardPanel);
+                g2.setColor(selected || hovered ? CLR_BLUE : new Color(190, 190, 190));
+                g2.setStroke(new BasicStroke(selected || hovered ? 2f : 1f));
+                g2.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 20, 20);                g2.dispose();
             }
         };
+        cardRef[0] = card;
+
         card.setOpaque(false);
-        card.setBorder(new LineBorder(CLR_BORDER, 1));
+        card.setBorder(new EmptyBorder(4, 4, 6, 4));
         card.setPreferredSize(new Dimension(0, 280));
         card.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         card.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) {
-                card.setBorder(new LineBorder(CLR_BLUE, 2));
+                card.putClientProperty("hovered", true);
+                card.repaint();
             }
             @Override public void mouseExited(MouseEvent e) {
-                boolean isSelected = selectedCar != null
-                    && selectedCar.getCarId() == car.getCarId();
-                card.setBorder(new LineBorder(isSelected ? CLR_BLUE : CLR_BORDER, 1));
+                card.putClientProperty("hovered", false);
+                card.repaint();
             }
             @Override public void mouseClicked(MouseEvent e) {
+                if (selectedCardPanel != null) selectedCardPanel.repaint();
+                selectedCardPanel = card;
+                card.repaint();
                 openDetail(car);
             }
         });
 
         // ── Image area (140px) ──
-        JPanel imgArea = new JPanel(new BorderLayout());
+        JPanel imgArea = new JPanel(new BorderLayout()) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(235, 238, 245));
+                // Only round the TOP two corners (bottom edge meets the info panel)
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2.setColor(new Color(235, 238, 245));
+                g2.fillRect(0, getHeight() - 20, getWidth(), 20);                g2.dispose();
+            }
+        };
+        imgArea.setOpaque(false);
         imgArea.setPreferredSize(new Dimension(0, 140));
-        imgArea.setBackground(new Color(235, 238, 245));
-
-        JPanel badgeWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 6));
-        badgeWrapper.setOpaque(false);
-        badgeWrapper.add(buildStatusBadge(car.getStatus()));
-        imgArea.add(badgeWrapper, BorderLayout.NORTH);
 
         String imgPath = car.getImagePath();
-        if (imgPath != null && !imgPath.isBlank()) {
-            try {
-                ImageIcon raw = new ImageIcon(imgPath);
-                java.awt.Image scaled = raw.getImage()
-                    .getScaledInstance(200, 110, java.awt.Image.SCALE_SMOOTH);
-                imgArea.add(new JLabel(new ImageIcon(scaled), SwingConstants.CENTER),
-                    BorderLayout.CENTER);
-            } catch (Exception ex) {
-                imgArea.add(buildCarEmoji(car.getCategory()), BorderLayout.CENTER);
-            }
+        ImageIcon cardIcon = loadImage(imgPath, 200, 110);
+        if (cardIcon != null) {
+            imgArea.add(new JLabel(cardIcon, SwingConstants.CENTER), BorderLayout.CENTER);
         } else {
             imgArea.add(buildCarEmoji(car.getCategory()), BorderLayout.CENTER);
         }
@@ -384,6 +399,7 @@ public class BrowseCarsGUI extends JPanel {
         JPanel info = new JPanel();
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
         info.setBackground(CLR_WHITE);
+        info.setOpaque(true); // clipped by card's paintComponent
         info.setBorder(new EmptyBorder(10, 12, 12, 12));
 
         JLabel nameLbl = new JLabel(car.getBrand() + " " + car.getModel());
@@ -460,6 +476,10 @@ public class BrowseCarsGUI extends JPanel {
     }
 
     private void closeDetail() {
+        if (selectedCardPanel != null) {
+            selectedCardPanel.repaint();
+            selectedCardPanel = null;
+        }
         animateDetail(false);
     }
 
@@ -490,7 +510,7 @@ public class BrowseCarsGUI extends JPanel {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(CLR_WHITE);
 
-        // ── Image area + close button ──
+        // ── Image area + back button ──
         JPanel imgArea = new JPanel(new BorderLayout());
         imgArea.setPreferredSize(new Dimension(DETAIL_WIDTH, 180));
         imgArea.setBackground(new Color(235, 238, 245));
@@ -504,12 +524,12 @@ public class BrowseCarsGUI extends JPanel {
         badgeWrap.add(buildStatusBadge(car.getStatus()));
         topBar.add(badgeWrap, BorderLayout.WEST);
 
-        JButton closeBtn = new JButton("\u2715") {
+        JButton closeBtn = new JButton("\u2190  Back") {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getBackground());
-                g2.fillOval(0, 0, getWidth(), getHeight());
+                g2.fill(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
                 g2.dispose();
                 super.paintComponent(g);
             }
@@ -517,26 +537,22 @@ public class BrowseCarsGUI extends JPanel {
         closeBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
         closeBtn.setForeground(CLR_GRAY);
         closeBtn.setBackground(new Color(230, 230, 230));
-        closeBtn.setPreferredSize(new Dimension(26, 26));
+        closeBtn.setPreferredSize(new Dimension(90, 28));
         closeBtn.setBorderPainted(false);
         closeBtn.setContentAreaFilled(false);
         closeBtn.setFocusPainted(false);
         closeBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        closeBtn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { closeBtn.setBackground(new Color(210, 210, 210)); }
+            @Override public void mouseExited(MouseEvent e)  { closeBtn.setBackground(new Color(230, 230, 230)); }
+        });
         closeBtn.addActionListener(e -> closeDetail());
         topBar.add(closeBtn, BorderLayout.EAST);
         imgArea.add(topBar, BorderLayout.NORTH);
 
-        String imgPath = car.getImagePath();
-        if (imgPath != null && !imgPath.isBlank()) {
-            try {
-                ImageIcon raw = new ImageIcon(imgPath);
-                java.awt.Image scaled = raw.getImage()
-                    .getScaledInstance(320, 140, java.awt.Image.SCALE_SMOOTH);
-                imgArea.add(new JLabel(new ImageIcon(scaled), SwingConstants.CENTER),
-                    BorderLayout.CENTER);
-            } catch (Exception ex) {
-                imgArea.add(buildCarEmoji(car.getCategory()), BorderLayout.CENTER);
-            }
+        ImageIcon detailIcon = loadImage(car.getImagePath(), 320, 140);
+        if (detailIcon != null) {
+            imgArea.add(new JLabel(detailIcon, SwingConstants.CENTER), BorderLayout.CENTER);
         } else {
             imgArea.add(buildCarEmoji(car.getCategory()), BorderLayout.CENTER);
         }
@@ -642,7 +658,6 @@ public class BrowseCarsGUI extends JPanel {
                 @Override public void mouseExited(MouseEvent e)  { rentBtn.setBackground(CLR_GREEN); }
             });
             rentBtn.addActionListener(e -> {
-                // TODO: pass selectedCar into MakeReservationGUI before switching
                 if (onRentNow != null) onRentNow.run();
             });
         }
@@ -694,10 +709,10 @@ public class BrowseCarsGUI extends JPanel {
         Color bg, fg;
         String text;
         switch (status) {
-            case "AVAILABLE"   -> { bg = new Color(220,252,231); fg = CLR_GREEN;               text = "\u25CF Available";   }
-            case "RENTED"      -> { bg = new Color(254,226,226); fg = CLR_RED;                 text = "\u25CF Rented Out";  }
-            case "MAINTENANCE" -> { bg = new Color(229,231,235); fg = new Color(107,114,128);  text = "\u25CF Unavailable"; }
-            default            -> { bg = new Color(229,231,235); fg = CLR_GRAY;                text = "\u25CF Unknown";     }
+            case "AVAILABLE"   -> { bg = new Color(220,252,231); fg = CLR_GREEN;              text = "\u25CF Available";   }
+            case "RENTED"      -> { bg = new Color(254,226,226); fg = CLR_RED;                text = "\u25CF Rented Out";  }
+            case "MAINTENANCE" -> { bg = new Color(229,231,235); fg = new Color(107,114,128); text = "\u25CF Unavailable"; }
+            default            -> { bg = new Color(229,231,235); fg = CLR_GRAY;               text = "\u25CF Unknown";     }
         }
         JPanel badge = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
@@ -721,6 +736,34 @@ public class BrowseCarsGUI extends JPanel {
     }
 
     // ====================================================
+    //  IMAGE LOADER — supports local paths AND https:// URLs
+    // ====================================================
+    /**
+     * Loads an image from either a local file path or an HTTPS URL.
+     * Returns null if the path is blank, invalid, or the load fails.
+     * @param path  local file path or full https:// URL
+     * @param w     target width in pixels
+     * @param h     target height in pixels
+     */
+    private ImageIcon loadImage(String path, int w, int h) {
+        if (path == null || path.isBlank()) return null;
+        try {
+            BufferedImage img;
+            if (path.startsWith("http://") || path.startsWith("https://")) {
+                img = ImageIO.read(new URL(path));
+            } else {
+                img = ImageIO.read(new java.io.File(path));
+            }
+            if (img == null) return null;
+            java.awt.Image scaled = img.getScaledInstance(w, h, java.awt.Image.SCALE_SMOOTH);
+            return new ImageIcon(scaled);
+        } catch (IOException e) {
+            System.err.println("[BrowseCarsGUI] Failed to load image: " + path + " — " + e.getMessage());
+            return null;
+        }
+    }
+
+    // ====================================================
     //  CAR EMOJI PLACEHOLDER
     // ====================================================
     private JLabel buildCarEmoji(String category) {
@@ -738,7 +781,6 @@ public class BrowseCarsGUI extends JPanel {
 
     // ====================================================
     //  PUBLIC FILTER METHODS
-    //  Called from CustomerDashboardGUI dropdown
     // ====================================================
     public void filterByType(String type) {
         List<Car> filtered = allCars.stream()
@@ -784,10 +826,10 @@ public class BrowseCarsGUI extends JPanel {
     private boolean matchesPriceRange(BigDecimal rate, String range) {
         double r = rate.doubleValue();
         return switch (range) {
-            case "Under \u20B11,000"       -> r < 1000;
-            case "\u20B11,000 \u2013 \u20B12,000" -> r >= 1000 && r <= 2000;
-            case "Above \u20B12,000"       -> r > 2000;
-            default                        -> true;
+            case "Under \u20B11,000"                   -> r < 1000;
+            case "\u20B11,000 \u2013 \u20B12,000"      -> r >= 1000 && r <= 2000;
+            case "Above \u20B12,000"                   -> r > 2000;
+            default                                    -> true;
         };
     }
 
