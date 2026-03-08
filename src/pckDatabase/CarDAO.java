@@ -18,18 +18,19 @@ import pckModels.Car;
  * Used by: CarService.java
  *
  * Table: cars
- *   car_id       INT AUTO_INCREMENT PK
- *   brand        VARCHAR(50)
- *   model        VARCHAR(50)
- *   year         YEAR
- *   plate_number VARCHAR(20) UNIQUE
- *   category     ENUM('Sedan','SUV','Van','Truck','Pickup','Coupe','Minivan')
- *   transmission ENUM('Automatic','Manual')
+ *   car_id        INT AUTO_INCREMENT PK
+ *   brand         VARCHAR(50)
+ *   model         VARCHAR(50)
+ *   year          YEAR
+ *   plate_number  VARCHAR(20) UNIQUE
+ *   category      ENUM('Sedan','SUV','Van','Truck','Pickup','Coupe','Minivan')
+ *   transmission  ENUM('Automatic','Manual')
  *   seat_capacity INT
- *   daily_rate   DECIMAL(10,2)
- *   status       ENUM('AVAILABLE','RENTED','MAINTENANCE')
- *   image_path   VARCHAR(255)
- *   created_at   TIMESTAMP
+ *   daily_rate    DECIMAL(10,2)
+ *   status        ENUM('AVAILABLE','RENTED','MAINTENANCE')
+ *   image_path    VARCHAR(255)
+ *   color         VARCHAR(30)
+ *   created_at    TIMESTAMP
  */
 public class CarDAO {
 
@@ -37,7 +38,6 @@ public class CarDAO {
     //  Shared helper — map a ResultSet row to a Car
     // ─────────────────────────────────────────────
     private Car mapRow(ResultSet rs) throws SQLException {
-        // This assumes your Car model constructor has a String field at the end for imagePath
         return new Car(
             rs.getInt("car_id"),
             rs.getString("brand"),
@@ -49,24 +49,24 @@ public class CarDAO {
             rs.getInt("seat_capacity"),
             rs.getBigDecimal("daily_rate"),
             rs.getString("status"),
-            rs.getString("image_path")
+            rs.getString("image_path"),
+            rs.getString("color")
         );
     }
 
     // ====================================================
-    //  READ — Get all cars (Refactored for consistency)
+    //  READ — Get all cars
     // ====================================================
     public List<Car> getAllCars() {
         List<Car> cars = new ArrayList<>();
         String sql = "SELECT * FROM cars";
-        
+
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql);
-            ResultSet rs = pstmt.executeQuery()) {
-            
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
             while (rs.next()) {
-                // Using mapRow here ensures you don't miss the image_path
-                cars.add(mapRow(rs)); 
+                cars.add(mapRow(rs));
             }
         } catch (SQLException e) {
             System.err.println("[CarDAO] ERROR in getAllCars(): " + e.getMessage());
@@ -198,8 +198,8 @@ public class CarDAO {
         String sql = """
             INSERT INTO cars
                 (brand, model, year, plate_number, category,
-                 transmission, seat_capacity, daily_rate, status, image_path)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 transmission, seat_capacity, daily_rate, status, image_path, color)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -215,6 +215,7 @@ public class CarDAO {
             ps.setBigDecimal(8, car.getDailyRate());
             ps.setString(9,     car.getStatus());
             ps.setString(10,    car.getImagePath());
+            ps.setString(11,    car.getColor());
 
             int rows = ps.executeUpdate();
             if (rows > 0) {
@@ -250,7 +251,8 @@ public class CarDAO {
                 seat_capacity = ?,
                 daily_rate    = ?,
                 status        = ?,
-                image_path    = ?
+                image_path    = ?,
+                color         = ?
             WHERE car_id = ?
             """;
 
@@ -267,7 +269,8 @@ public class CarDAO {
             ps.setBigDecimal(8, car.getDailyRate());
             ps.setString(9,     car.getStatus());
             ps.setString(10,    car.getImagePath());
-            ps.setInt(11,       car.getCarId());
+            ps.setString(11,    car.getColor());
+            ps.setInt(12,       car.getCarId());
 
             int rows = ps.executeUpdate();
             System.out.println("[CarDAO] updateCar(id=" + car.getCarId() + ") → " + rows + " row(s) updated");

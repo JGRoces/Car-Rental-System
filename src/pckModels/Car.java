@@ -10,6 +10,7 @@ import java.math.BigDecimal;
  * category     ENUM : Sedan, SUV, Van, Truck, Pickup, Coupe, Minivan
  * transmission ENUM : Automatic, Manual
  * status       ENUM : AVAILABLE, RENTED, MAINTENANCE
+ * color        VARCHAR(30) : e.g. "Pearl White", "Midnight Black"
  */
 public class Car {
 
@@ -23,7 +24,8 @@ public class Car {
     private int        seatCapacity;
     private BigDecimal dailyRate;
     private String     status;
-    private String     imagePath;     // relative path e.g. "assets/images/cars/toyota-vios.png"
+    private String     imagePath;
+    private String     color;
 
     // -------------------------
     // Constructor — New car (before DB insert)
@@ -39,16 +41,17 @@ public class Car {
         this.transmission = transmission;
         this.seatCapacity = seatCapacity;
         this.dailyRate    = dailyRate;
-        this.status       = "AVAILABLE"; // default on creation
+        this.status       = "AVAILABLE";
         this.imagePath    = null;
+        this.color        = null;
     }
 
     // -------------------------
-    // Constructor — Loaded from DB (has carId, status, imagePath)
+    // Constructor — Loaded from DB (has carId, status, imagePath, color)
     // -------------------------
     public Car(int carId, String brand, String model, int year, String plateNumber,
                String category, String transmission, int seatCapacity,
-               BigDecimal dailyRate, String status, String imagePath) {
+               BigDecimal dailyRate, String status, String imagePath, String color) {
         this.carId        = carId;
         this.brand        = brand;
         this.model        = model;
@@ -60,6 +63,7 @@ public class Car {
         this.dailyRate    = dailyRate;
         this.status       = status;
         this.imagePath    = imagePath;
+        this.color        = color;
     }
 
     // -------------------------
@@ -76,6 +80,7 @@ public class Car {
     public BigDecimal getDailyRate()    { return dailyRate;    }
     public String     getStatus()       { return status;       }
     public String     getImagePath()    { return imagePath;    }
+    public String     getColor()        { return color;        }
 
     // -------------------------
     // Setters
@@ -91,6 +96,7 @@ public class Car {
     public void setDailyRate(BigDecimal dailyRate)   { this.dailyRate    = dailyRate;    }
     public void setStatus(String status)             { this.status       = status;       }
     public void setImagePath(String imagePath)       { this.imagePath    = imagePath;    }
+    public void setColor(String color)               { this.color        = color;        }
 
     // -------------------------
     // Convenience Methods
@@ -114,17 +120,18 @@ public class Car {
     @Override
     public String toString() {
         return "Car{" +
-               "carId="        + carId        +
-               ", brand='"     + brand        + '\'' +
-               ", model='"     + model        + '\'' +
-               ", year="       + year         +
-               ", plate='"     + plateNumber  + '\'' +
-               ", category='"  + category     + '\'' +
+               "carId="           + carId        +
+               ", brand='"        + brand        + '\'' +
+               ", model='"        + model        + '\'' +
+               ", year="          + year         +
+               ", plate='"        + plateNumber  + '\'' +
+               ", category='"     + category     + '\'' +
                ", transmission='" + transmission + '\'' +
-               ", seatCapacity=" + seatCapacity  +
-               ", dailyRate="  + dailyRate    +
-               ", status='"    + status       + '\'' +
-               ", imagePath='" + imagePath    + '\'' +
+               ", seatCapacity="  + seatCapacity  +
+               ", dailyRate="     + dailyRate    +
+               ", status='"       + status       + '\'' +
+               ", imagePath='"    + imagePath    + '\'' +
+               ", color='"        + color        + '\'' +
                '}';
     }
 }

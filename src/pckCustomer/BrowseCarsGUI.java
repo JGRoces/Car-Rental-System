@@ -54,6 +54,11 @@ import pckServices.CarService;
  * │  [ Card ][ Card ][ Card ][ Card ]   │  (slide-out)   │  ← BODY
  * └─────────────────────────────────────┴────────────────┘
  *
+ * Color display:
+ *  - Card image area: 4px color stripe along the bottom edge
+ *  - Card info area: small filled circle swatch next to color name
+ *  - Detail panel: "Color" row in the Specifications section
+ *
  * Image loading:
  *  - DB stores filename only (e.g. "honda-civic.png")
  *  - Resolved to assets/images/<filename> at runtime
@@ -380,8 +385,9 @@ public class BrowseCarsGUI extends JPanel {
             }
         });
 
-        // ── Image area (140px) — cover paint with rounded top corners ──
-        final BufferedImage cardImg = loadImageRaw(car.getImagePath());
+        // ── Image area (140px) — cover image + color stripe at bottom ──
+        final BufferedImage cardImg  = loadImageRaw(car.getImagePath());
+        final Color         carColor = parseColor(car.getColor());
 
         JPanel imgArea = new JPanel(new BorderLayout()) {
             @Override
@@ -390,11 +396,10 @@ public class BrowseCarsGUI extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
-                // Clip to rounded top corners only (bottom is flush with info panel)
+                // Clip to rounded top corners only
                 g2.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 20, 20));
 
                 if (cardImg != null) {
-                    // Cover: scale to fill, center, crop excess — no distortion
                     int pw = getWidth(),       ph = getHeight();
                     int iw = cardImg.getWidth(), ih = cardImg.getHeight();
                     double scale = Math.max((double) pw / iw, (double) ph / ih);
@@ -404,10 +409,14 @@ public class BrowseCarsGUI extends JPanel {
                     int y = (ph - drawH) / 2;
                     g2.drawImage(cardImg, x, y, drawW, drawH, null);
                 } else {
-                    // Fallback — plain background, emoji added as child component
                     g2.setColor(new Color(235, 238, 245));
                     g2.fillRect(0, 0, getWidth(), getHeight());
                 }
+
+                // Color stripe — 4px bar at the bottom edge of the image area
+                g2.setColor(carColor);
+                g2.fillRect(0, getHeight() - 4, getWidth(), 4);
+
                 g2.dispose();
             }
         };
@@ -423,7 +432,7 @@ public class BrowseCarsGUI extends JPanel {
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
         info.setBackground(CLR_WHITE);
         info.setOpaque(true);
-        info.setBorder(new EmptyBorder(10, 12, 12, 12));
+        info.setBorder(new EmptyBorder(10, 12, 10, 12));
 
         JLabel nameLbl = new JLabel(car.getBrand() + " " + car.getModel());
         nameLbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -444,14 +453,47 @@ public class BrowseCarsGUI extends JPanel {
         specLbl.setForeground(CLR_GRAY);
         specLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
         info.add(specLbl);
-        info.add(Box.createVerticalStrut(8));
+        info.add(Box.createVerticalStrut(6));
+
+        // Color swatch row
+        String colorName = (car.getColor() != null && !car.getColor().isBlank())
+                ? car.getColor() : "Unknown";
+        JPanel colorRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        colorRow.setBackground(CLR_WHITE);
+        colorRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel swatch = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(carColor);
+                g2.fillOval(0, 0, 10, 10);
+                // thin dark ring so light colors are still visible
+                g2.setColor(new Color(0, 0, 0, 40));
+                g2.setStroke(new BasicStroke(1f));
+                g2.drawOval(0, 0, 9, 9);
+                g2.dispose();
+            }
+        };
+        swatch.setPreferredSize(new Dimension(10, 10));
+        swatch.setOpaque(false);
+
+        JLabel colorLbl = new JLabel(" " + colorName);
+        colorLbl.setFont(FONT_SMALL);
+        colorLbl.setForeground(CLR_GRAY);
+
+        colorRow.add(swatch);
+        colorRow.add(colorLbl);
+        info.add(colorRow);
+        info.add(Box.createVerticalStrut(6));
 
         JPanel div = new JPanel();
         div.setBackground(CLR_BORDER);
         div.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
         div.setAlignmentX(Component.LEFT_ALIGNMENT);
         info.add(div);
-        info.add(Box.createVerticalStrut(8));
+        info.add(Box.createVerticalStrut(6));
 
         JPanel priceRow = new JPanel(new BorderLayout());
         priceRow.setBackground(CLR_WHITE);
@@ -544,7 +586,6 @@ public class BrowseCarsGUI extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
 
                 if (detailImg != null) {
-                    // Cover: scale to fill, center, crop excess — no distortion
                     int pw = getWidth(),        ph = getHeight();
                     int iw = detailImg.getWidth(), ih = detailImg.getHeight();
                     double scale = Math.max((double) pw / iw, (double) ph / ih);
@@ -626,14 +667,17 @@ public class BrowseCarsGUI extends JPanel {
         body.add(yearCat);
         body.add(Box.createVerticalStrut(16));
 
+        // Specs — includes Color row
         body.add(buildSectionHeader("Specifications"));
         body.add(Box.createVerticalStrut(8));
         body.add(buildSpecRow("Plate Number",  car.getPlateNumber()));
         body.add(buildSpecRow("Transmission",  car.getTransmission()));
         body.add(buildSpecRow("Seat Capacity", car.getSeatCapacity() + " seats"));
         body.add(buildSpecRow("Category",      car.getCategory()));
+        body.add(buildColorSpecRow(car.getColor()));   // ← color row with swatch
         body.add(Box.createVerticalStrut(16));
 
+        // Pricing
         double base  = car.getDailyRate().doubleValue();
         double tax   = base * 0.12;
         double total = base + tax;
@@ -660,6 +704,7 @@ public class BrowseCarsGUI extends JPanel {
         body.add(totalRow);
         body.add(Box.createVerticalStrut(16));
 
+        // Availability
         body.add(buildSectionHeader("Availability"));
         body.add(Box.createVerticalStrut(8));
         if ("AVAILABLE".equals(car.getStatus())) {
@@ -674,6 +719,7 @@ public class BrowseCarsGUI extends JPanel {
         }
         body.add(Box.createVerticalStrut(24));
 
+        // Rent Now button
         boolean available = "AVAILABLE".equals(car.getStatus());
         JButton rentBtn = new JButton(available ? "Rent Now" : "Not Available") {
             @Override
@@ -747,6 +793,55 @@ public class BrowseCarsGUI extends JPanel {
         return row;
     }
 
+    /**
+     * Special spec row for color — shows a filled circle swatch next to the color name
+     */
+    private JPanel buildColorSpecRow(String colorName) {
+        String label = (colorName != null && !colorName.isBlank()) ? colorName : "Unknown";
+        Color  swatch = parseColor(colorName);
+
+        JPanel row = new JPanel(new BorderLayout());
+        row.setBackground(CLR_WHITE);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setBorder(new MatteBorder(0, 0, 1, 0, new Color(240, 240, 240)));
+
+        JLabel keyLbl = new JLabel("Color");
+        keyLbl.setFont(FONT_SMALL);
+        keyLbl.setForeground(CLR_GRAY);
+
+        // Right side: swatch circle + color name
+        JPanel valuePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        valuePanel.setBackground(CLR_WHITE);
+
+        JPanel dot = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(swatch);
+                g2.fillOval(0, 0, 12, 12);
+                g2.setColor(new Color(0, 0, 0, 40));
+                g2.setStroke(new BasicStroke(1f));
+                g2.drawOval(0, 0, 11, 11);
+                g2.dispose();
+            }
+        };
+        dot.setPreferredSize(new Dimension(12, 12));
+        dot.setOpaque(false);
+
+        JLabel valLbl = new JLabel(label);
+        valLbl.setFont(FONT_BOLD);
+        valLbl.setForeground(CLR_BLACK);
+
+        valuePanel.add(dot);
+        valuePanel.add(valLbl);
+
+        row.add(keyLbl,     BorderLayout.WEST);
+        row.add(valuePanel, BorderLayout.EAST);
+        return row;
+    }
+
     // ====================================================
     //  STATUS BADGE
     // ====================================================
@@ -804,6 +899,38 @@ public class BrowseCarsGUI extends JPanel {
             e.printStackTrace();
             return null;
         }
+    }
+
+    // ====================================================
+    //  COLOR PARSER
+    // ====================================================
+
+    /**
+     * Converts a car color name string to a Java Color for rendering.
+     * Handles common car color names. Falls back to a neutral gray if unknown.
+     */
+    private Color parseColor(String colorName) {
+        if (colorName == null || colorName.isBlank()) return new Color(180, 180, 180);
+        return switch (colorName.trim().toLowerCase()) {
+            case "white", "pearl white", "solid white"          -> new Color(245, 245, 245);
+            case "black", "midnight black", "jet black"         -> new Color(28, 28, 28);
+            case "silver", "silver metallic", "granite silver"  -> new Color(192, 192, 192);
+            case "gray", "grey", "charcoal", "dark gray"        -> new Color(108, 108, 108);
+            case "red", "crimson red", "passion red"            -> new Color(200, 30, 30);
+            case "blue", "navy blue", "azure blue", "dark blue" -> new Color(30, 80, 180);
+            case "light blue", "sky blue"                       -> new Color(100, 160, 220);
+            case "green", "dark green", "forest green"          -> new Color(34, 120, 60);
+            case "olive", "olive green"                         -> new Color(107, 120, 50);
+            case "yellow", "bright yellow"                      -> new Color(230, 190, 20);
+            case "gold", "golden"                               -> new Color(210, 170, 50);
+            case "orange"                                       -> new Color(220, 100, 30);
+            case "brown", "bronze"                              -> new Color(140, 80, 40);
+            case "beige", "cream", "champagne"                  -> new Color(220, 205, 175);
+            case "purple", "violet"                             -> new Color(110, 60, 160);
+            case "maroon", "burgundy", "dark red"               -> new Color(120, 20, 40);
+            case "pink"                                         -> new Color(220, 130, 150);
+            default                                             -> new Color(150, 150, 150);
+        };
     }
 
     // ====================================================
