@@ -26,7 +26,7 @@ import java.io.File;
 public class DriverSignUpGUI extends JFrame {
 
     private static final String PLACEHOLDER_PHOTO =
-        "assets/test-images/profile photos/mockpfp.png";
+        "assets/test-images/profile photos/phpfp.png";
 
     private static final String[] VEHICLE_TYPES = {
         "Select vehicle type…", "Sedan", "SUV", "Van / Minibus",
