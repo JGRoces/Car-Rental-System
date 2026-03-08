@@ -102,6 +102,7 @@ public class CustomerDashboardGUI extends JFrame {
     private JPanel     contentArea;
     private CardLayout cardLayout;
     private JButton[]  navButtons;
+    private BrowseCarsGUI browseCarsPanel; 
 
     // ─────────────────────────────────────────────
     //  Constructor
@@ -335,7 +336,8 @@ public class CustomerDashboardGUI extends JFrame {
         contentArea = new JPanel(cardLayout);
         contentArea.setBackground(CLR_BG);
 
-        contentArea.add(buildPlaceholderPanel("Browse Cars",        "\uD83D\uDE97"), PANEL_KEYS[0]);
+        browseCarsPanel = new BrowseCarsGUI();
+        contentArea.add((JPanel) browseCarsPanel, PANEL_KEYS[0]);
         contentArea.add(buildPlaceholderPanel("Make a Reservation", "\uD83D\uDCC5"), PANEL_KEYS[1]);
         contentArea.add(buildPlaceholderPanel("My Rentals",         "\uD83D\uDCCB"), PANEL_KEYS[2]);
         contentArea.add(buildPlaceholderPanel("Payment",            "\uD83D\uDCB3"), PANEL_KEYS[3]);
