@@ -338,7 +338,7 @@ public class CustomerDashboardGUI extends JFrame {
 
         browseCarsPanel = new BrowseCarsGUI();
         contentArea.add((JPanel) browseCarsPanel, PANEL_KEYS[0]);
-        contentArea.add(buildPlaceholderPanel("Make a Reservation", "\uD83D\uDCC5"), PANEL_KEYS[1]);
+        contentArea.add(new MakeReservationPanel(), PANEL_KEYS[1]);
         contentArea.add(buildPlaceholderPanel("My Rentals",         "\uD83D\uDCCB"), PANEL_KEYS[2]);
         contentArea.add(buildPlaceholderPanel("Payment",            "\uD83D\uDCB3"), PANEL_KEYS[3]);
 
