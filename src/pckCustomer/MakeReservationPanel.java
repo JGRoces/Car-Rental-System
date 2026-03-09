@@ -32,10 +32,9 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
-import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerDateModel;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
@@ -49,6 +48,16 @@ import pckUtils.SessionManager;
  * MakeReservationPanel.java
  * Plugs into CustomerDashboardGUI as PANEL_KEYS[1].
  * All inputs, cards, buttons and banners use rounded corners.
+ *
+ * FIXES applied:
+ *  1. Section header divider lines now always span full card width.
+ *     Root cause: JSeparator inside BoxLayout doesn't stretch reliably.
+ *     Fix: buildSectionCardParts() uses BorderLayout for the card, with
+ *     the title+divider in NORTH (guaranteed full width) and a BoxLayout
+ *     content panel in CENTER for form widgets.
+ *  2. Blue info banner in Driver's License section fills full width.
+ *  3. Reservation Summary: emoji key labels replaced with plain text to
+ *     avoid rendering as boxes; summary row height increased to 26px.
  */
 public class MakeReservationPanel extends JPanel {
 
@@ -87,12 +96,12 @@ public class MakeReservationPanel extends JPanel {
     // ─────────────────────────────────────────────
     //  Corner radii
     // ─────────────────────────────────────────────
-    private static final int R_CARD    = 12;   // section cards
-    private static final int R_INPUT   = 8;    // text fields / combos
-    private static final int R_BUTTON  = 8;    // buttons
-    private static final int R_BANNER  = 8;    // info banners
-    private static final int R_CHIP    = 8;    // detail chips
-    private static final int R_STEP    = 11;   // step number circle
+    private static final int R_CARD    = 12;
+    private static final int R_INPUT   = 8;
+    private static final int R_BUTTON  = 8;
+    private static final int R_BANNER  = 8;
+    private static final int R_CHIP    = 8;
+    private static final int R_STEP    = 11;
 
     // ─────────────────────────────────────────────
     //  Step keys
@@ -201,6 +210,8 @@ public class MakeReservationPanel extends JPanel {
         scroll.getViewport().setBackground(CLR_BG);
         scroll.getVerticalScrollBar().setUnitIncrement(14);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
+        scroll.getVerticalScrollBar().setOpaque(false);
         add(scroll, BorderLayout.CENTER);
     }
 
@@ -245,7 +256,9 @@ public class MakeReservationPanel extends JPanel {
 
     // ── Car selection ──
     private JPanel buildCarSection() {
-        JPanel section = buildSectionCard("\uD83D\uDE97  Car Selection");
+        JPanel[] parts   = buildSectionCardParts("Car Selection");
+        JPanel   outer   = parts[0];
+        JPanel   content = parts[1];
 
         JPanel topRow = new JPanel(new GridLayout(1, 2, 12, 0));
         topRow.setBackground(CLR_WHITE);
@@ -260,10 +273,9 @@ public class MakeReservationPanel extends JPanel {
 
         topRow.add(buildField("Select Car",  carCombo));
         topRow.add(buildField("Rental Type", rentalTypeCombo));
-        section.add(topRow);
-        section.add(Box.createVerticalStrut(12));
+        content.add(topRow);
+        content.add(Box.createVerticalStrut(12));
 
-        // Car detail strip — rounded chips
         JPanel detailStrip = new JPanel(new GridLayout(1, 4, 10, 0)) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -275,24 +287,28 @@ public class MakeReservationPanel extends JPanel {
         };
         detailStrip.setOpaque(false);
         detailStrip.setBorder(new EmptyBorder(10, 14, 10, 14));
-        detailStrip.setAlignmentX(Component.LEFT_ALIGNMENT);
-        detailStrip.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
 
         carDetailCategory     = buildDetailChip(detailStrip, "Category",     "—");
         carDetailTransmission = buildDetailChip(detailStrip, "Transmission", "—");
         carDetailSeats        = buildDetailChip(detailStrip, "Seats",        "—");
         carDetailRate         = buildDetailChip(detailStrip, "Daily Rate",   "—");
-        section.add(detailStrip);
+
+        // Wrap in BorderLayout row so it always fills the full card width
+        JPanel stripRow = new JPanel(new BorderLayout());
+        stripRow.setOpaque(false);
+        stripRow.add(detailStrip, BorderLayout.CENTER);
+        content.add(stripRow);
 
         carCombo.addActionListener(e -> { updateCarDetails(); refreshSummary(); });
         rentalTypeCombo.addActionListener(e -> refreshSummary());
 
-        return section;
+        return outer;
     }
 
-    // ── Schedule ──
     private JPanel buildScheduleSection() {
-        JPanel section = buildSectionCard("\uD83D\uDCC5  Schedule");
+        JPanel[] parts   = buildSectionCardParts("Schedule");
+        JPanel   outer   = parts[0];
+        JPanel   content = parts[1];
 
         JPanel grid = new JPanel(new GridLayout(2, 2, 12, 12));
         grid.setBackground(CLR_WHITE);
@@ -317,13 +333,14 @@ public class MakeReservationPanel extends JPanel {
         grid.add(buildField("Return Date",  returnDateSpinner));
         grid.add(buildField("Pick-up Time", pickupTimeCombo));
         grid.add(buildField("Return Time",  returnTimeCombo));
-        section.add(grid);
-        return section;
+        content.add(grid);
+        return outer;
     }
 
-    // ── Locations ──
     private JPanel buildLocationSection() {
-        JPanel section = buildSectionCard("\uD83D\uDCCD  Locations");
+        JPanel[] parts   = buildSectionCardParts("Locations");
+        JPanel   outer   = parts[0];
+        JPanel   content = parts[1];
 
         JPanel grid = new JPanel(new GridLayout(1, 2, 12, 0));
         grid.setBackground(CLR_WHITE);
@@ -337,31 +354,48 @@ public class MakeReservationPanel extends JPanel {
 
         grid.add(buildField("Pick-up Location", pickupLocCombo));
         grid.add(buildField("Return Location",  returnLocCombo));
-        section.add(grid);
-        return section;
+        content.add(grid);
+        return outer;
     }
 
-    // ── Driver's License ──
     private JPanel buildLicenseSection() {
-        JPanel section = buildSectionCard("\uD83D\uDD11  Driver\u2019s License Validation");
+        // Built manually (not via buildSectionCardParts) so the blue banner
+        // can be placed in a dedicated BorderLayout slot — guaranteed full width.
+        JLabel titleLbl = new JLabel("Driver’s License Validation");
+        titleLbl.setFont(FONT_SECTION);
+        titleLbl.setForeground(CLR_BLACK);
+        titleLbl.setBorder(new EmptyBorder(0, 0, 8, 0));
 
-        // Rounded info banner
+        JPanel divLine = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                g.setColor(CLR_BORDER); g.fillRect(0, 0, getWidth(), getHeight());
+            }
+            @Override public Dimension getPreferredSize() { return new Dimension(0, 1); }
+            @Override public Dimension getMinimumSize()   { return new Dimension(0, 1); }
+        };
+        divLine.setOpaque(false);
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.setBorder(new EmptyBorder(0, 0, 10, 0));
+        header.add(titleLbl, BorderLayout.CENTER);
+        header.add(divLine,  BorderLayout.SOUTH);
+
+        // Banner in BorderLayout CENTER — always stretches to full card width
         JPanel banner = new RoundedPanel(R_BANNER, CLR_BLUE_SOFT);
         banner.setLayout(new BorderLayout());
         banner.setBorder(new EmptyBorder(8, 12, 8, 12));
-        banner.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel bannerLbl = new JLabel(
-            "\uD83D\uDCCB Your license will be verified before approval. Ensure details match exactly.");
+            "Your license will be verified before approval. Ensure details match exactly.");
         bannerLbl.setFont(FONT_SMALL);
         bannerLbl.setForeground(CLR_BLUE_TEXT);
-        banner.add(bannerLbl);
-        section.add(banner);
-        section.add(Box.createVerticalStrut(12));
+        banner.add(bannerLbl, BorderLayout.CENTER);
 
-        JPanel grid = new JPanel(new GridLayout(1, 2, 12, 0));
-        grid.setBackground(CLR_WHITE);
+        JPanel bannerWrap = new JPanel(new BorderLayout());
+        bannerWrap.setOpaque(false);
+        bannerWrap.setBorder(new EmptyBorder(0, 0, 12, 0));
+        bannerWrap.add(banner, BorderLayout.CENTER);
 
-        // Rounded text field
         licenseNumField = new RoundedTextField(R_INPUT);
         licenseNumField.setFont(FONT_INPUT);
         licenseNumField.setToolTipText("e.g. N01-23-456789");
@@ -370,7 +404,7 @@ public class MakeReservationPanel extends JPanel {
         uploadWrap.setLayout(new BoxLayout(uploadWrap, BoxLayout.Y_AXIS));
         uploadWrap.setBackground(CLR_WHITE);
 
-        JButton uploadBtn = buildOutlineButton("\uD83D\uDCCE  Upload License Photo (Front)");
+        JButton uploadBtn = buildOutlineButton("Upload License Photo (Front)");
         uploadBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
         uploadBtn.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser();
@@ -393,10 +427,22 @@ public class MakeReservationPanel extends JPanel {
         uploadWrap.add(Box.createVerticalStrut(4));
         uploadWrap.add(licenseFileLabel);
 
+        JPanel grid = new JPanel(new GridLayout(1, 2, 12, 0));
+        grid.setBackground(CLR_WHITE);
         grid.add(buildField("License Number", licenseNumField));
         grid.add(buildField("License Photo",  uploadWrap));
-        section.add(grid);
-        return section;
+
+        JPanel inner = new JPanel(new BorderLayout(0, 0));
+        inner.setOpaque(false);
+        inner.add(bannerWrap, BorderLayout.NORTH);
+        inner.add(grid,       BorderLayout.CENTER);
+
+        RoundedPanel outer = new RoundedPanel(R_CARD, CLR_WHITE);
+        outer.setLayout(new BorderLayout());
+        outer.setBorder(new EmptyBorder(16, 16, 16, 16));
+        outer.add(header, BorderLayout.NORTH);
+        outer.add(inner,  BorderLayout.CENTER);
+        return outer;
     }
 
     // ── Form buttons ──
@@ -440,16 +486,18 @@ public class MakeReservationPanel extends JPanel {
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
         title.setBorder(new EmptyBorder(0, 0, 10, 0));
         card.add(title);
+        // FIX: divider inside summary card needs MAX width too
         card.add(buildDivider());
         card.add(Box.createVerticalStrut(10));
 
-        sumCarLbl       = buildSummaryRow(card, "\uD83D\uDE97  Car",     "—");
-        sumTypeLbl      = buildSummaryRow(card, "\uD83D\uDCCB  Type",    "—");
-        sumPickupLbl    = buildSummaryRow(card, "\uD83D\uDCC5  Pick-up", "—");
-        sumReturnLbl    = buildSummaryRow(card, "\uD83D\uDCC5  Return",  "—");
-        sumPickupLocLbl = buildSummaryRow(card, "\uD83D\uDCCD  From",    "—");
-        sumReturnLocLbl = buildSummaryRow(card, "\uD83D\uDCCD  To",      "—");
-        sumLicenseLbl   = buildSummaryRow(card, "\uD83D\uDD11  License", "—");
+        // FIX: use plain text keys (no emoji) so labels render correctly on all systems
+        sumCarLbl       = buildSummaryRow(card, "Car",        "—");
+        sumTypeLbl      = buildSummaryRow(card, "Type",       "—");
+        sumPickupLbl    = buildSummaryRow(card, "Pick-up",    "—");
+        sumReturnLbl    = buildSummaryRow(card, "Return",     "—");
+        sumPickupLocLbl = buildSummaryRow(card, "From",       "—");
+        sumReturnLocLbl = buildSummaryRow(card, "To",         "—");
+        sumLicenseLbl   = buildSummaryRow(card, "License",    "—");
 
         card.add(Box.createVerticalStrut(8));
         card.add(buildDivider());
@@ -517,34 +565,37 @@ public class MakeReservationPanel extends JPanel {
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        confCarLbl       = addConfirmRow(grid, "\uD83D\uDE97  Car Selected");
-        confTypeLbl      = addConfirmRow(grid, "\uD83D\uDCCB  Rental Type");
-        confPickupLbl    = addConfirmRow(grid, "\uD83D\uDCC5  Pick-up Date & Time");
-        confReturnLbl    = addConfirmRow(grid, "\uD83D\uDCC5  Return Date & Time");
-        confPickupLocLbl = addConfirmRow(grid, "\uD83D\uDCCD  Pick-up Location");
-        confReturnLocLbl = addConfirmRow(grid, "\uD83D\uDCCD  Return Location");
-        confLicenseLbl   = addConfirmRow(grid, "\uD83D\uDD11  License Number");
-        confDurationLbl  = addConfirmRow(grid, "\u23F1  Duration");
-        confRateLbl      = addConfirmRow(grid, "\uD83D\uDCB0  Rate");
-        confTotalLbl     = addConfirmRow(grid, "\uD83D\uDCB3  Total Amount");
+        confCarLbl       = addConfirmRow(grid, "Car Selected");
+        confTypeLbl      = addConfirmRow(grid, "Rental Type");
+        confPickupLbl    = addConfirmRow(grid, "Pick-up Date & Time");
+        confReturnLbl    = addConfirmRow(grid, "Return Date & Time");
+        confPickupLocLbl = addConfirmRow(grid, "Pick-up Location");
+        confReturnLocLbl = addConfirmRow(grid, "Return Location");
+        confLicenseLbl   = addConfirmRow(grid, "License Number");
+        confDurationLbl  = addConfirmRow(grid, "Duration");
+        confRateLbl      = addConfirmRow(grid, "Rate");
+        confTotalLbl     = addConfirmRow(grid, "Total Amount");
 
         card.add(grid);
         card.add(Box.createVerticalStrut(16));
         card.add(buildDivider());
         card.add(Box.createVerticalStrut(12));
 
-        // Rounded terms banner
+        // Rounded terms banner — wrapped in BorderLayout row for guaranteed full width
         JPanel termsBanner = new RoundedPanel(R_BANNER, CLR_YLW_SOFT);
         termsBanner.setLayout(new BorderLayout());
         termsBanner.setBorder(new EmptyBorder(8, 12, 8, 12));
-        termsBanner.setAlignmentX(Component.LEFT_ALIGNMENT);
-        termsBanner.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         JLabel termsLbl = new JLabel(
-            "\u26A0  By confirming, you agree to our rental terms and conditions.");
+            "By confirming, you agree to our rental terms and conditions.");
         termsLbl.setFont(FONT_SMALL);
         termsLbl.setForeground(CLR_YLW_TEXT);
-        termsBanner.add(termsLbl);
-        card.add(termsBanner);
+        termsBanner.add(termsLbl, BorderLayout.CENTER);
+        JPanel termsRow = new JPanel(new BorderLayout());
+        termsRow.setOpaque(false);
+        termsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        termsRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        termsRow.add(termsBanner, BorderLayout.CENTER);
+        card.add(termsRow);
 
         body.add(card);
         body.add(Box.createVerticalStrut(20));
@@ -786,7 +837,6 @@ public class MakeReservationPanel extends JPanel {
             JPanel chip = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
             chip.setBackground(CLR_BG);
 
-            // Rounded circle badge
             Color badgeBg = done ? CLR_GREEN : active ? CLR_BLUE : CLR_BORDER;
             Color badgeFg = (done || active) ? Color.WHITE : CLR_GRAY;
             String badgeTxt = done ? "\u2713" : String.valueOf(i + 1);
@@ -826,29 +876,45 @@ public class MakeReservationPanel extends JPanel {
         return bar;
     }
 
-    /** Rounded white section card */
-    private JPanel buildSectionCard(String title) {
-        JPanel section = new RoundedPanel(R_CARD, CLR_WHITE);
-        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
-        // Note: The 16px padding here defines the 'ends' of the line.
-        section.setBorder(new EmptyBorder(16, 16, 16, 16));
-        section.setAlignmentX(Component.LEFT_ALIGNMENT);
-
+    /**
+     * Builds a rounded section card using BorderLayout so the header divider
+     * is always full width. Returns [0] = outer card, [1] = content panel.
+     * Callers add widgets into parts[1] (content), and return parts[0] (card).
+     */
+    private JPanel[] buildSectionCardParts(String title) {
         JLabel titleLbl = new JLabel(title);
         titleLbl.setFont(FONT_SECTION);
         titleLbl.setForeground(CLR_BLACK);
-        titleLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        titleLbl.setBorder(new EmptyBorder(0, 0, 10, 0));
+        titleLbl.setBorder(new EmptyBorder(0, 0, 8, 0));
 
-        JSeparator sep = new JSeparator(SwingConstants.HORIZONTAL);
-        sep.setForeground(CLR_BORDER);
-        // Removing setMaximumSize allows it to expand fully within the BoxLayout
-        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // 1px divider — BorderLayout.SOUTH guarantees full card width
+        JPanel divLine = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                g.setColor(CLR_BORDER);
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+            @Override public Dimension getPreferredSize() { return new Dimension(0, 1); }
+            @Override public Dimension getMinimumSize()   { return new Dimension(0, 1); }
+        };
+        divLine.setOpaque(false);
 
-        section.add(titleLbl);
-        section.add(sep);
-        section.add(Box.createVerticalStrut(12));
-        return section;
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.setBorder(new EmptyBorder(0, 0, 12, 0));
+        header.add(titleLbl, BorderLayout.CENTER);
+        header.add(divLine,  BorderLayout.SOUTH);
+
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setOpaque(false);
+
+        RoundedPanel card = new RoundedPanel(R_CARD, CLR_WHITE);
+        card.setLayout(new BorderLayout());
+        card.setBorder(new EmptyBorder(16, 16, 16, 16));
+        card.add(header,  BorderLayout.NORTH);
+        card.add(content, BorderLayout.CENTER);
+
+        return new JPanel[]{ card, content };
     }
 
     private JPanel buildField(String labelText, JComponent field) {
@@ -892,11 +958,16 @@ public class MakeReservationPanel extends JPanel {
         return valLbl;
     }
 
+    /**
+     * FIX 3: Summary rows now have a generous max-height (26px) so they are
+     * not squeezed to zero by BoxLayout when the card is narrow.
+     */
     private JLabel buildSummaryRow(JPanel parent, String key, String value) {
         JPanel row = new JPanel(new BorderLayout(8, 0));
         row.setOpaque(false);
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+        // FIX: increased height from 22 → 26 so rows are never clipped
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
         row.setBorder(new EmptyBorder(2, 0, 2, 0));
 
         JLabel keyLbl = new JLabel(key);
@@ -929,12 +1000,23 @@ public class MakeReservationPanel extends JPanel {
         return valLbl;
     }
 
-    private JSeparator buildDivider() {
-        JSeparator sep = new JSeparator(SwingConstants.HORIZONTAL);
-        sep.setForeground(CLR_BORDER);
-        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
-        // Allow the separator to naturally fill the width of its container
-        return sep;
+    /**
+     * FIX: painted JPanel instead of JSeparator — always fills full width.
+     */
+    private JPanel buildDivider() {
+        JPanel divLine = new JPanel() {
+            @Override public Dimension getPreferredSize() { return new Dimension(0, 1); }
+            @Override public Dimension getMinimumSize()   { return new Dimension(0, 1); }
+            @Override public Dimension getMaximumSize()   { return new Dimension(Integer.MAX_VALUE, 1); }
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.setColor(CLR_BORDER);
+                g.fillRect(0, 0, getWidth(), 1);
+            }
+        };
+        divLine.setOpaque(false);
+        divLine.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return divLine;
     }
 
     /** Solid filled rounded button */
@@ -1018,7 +1100,7 @@ public class MakeReservationPanel extends JPanel {
     }
 
     // ====================================================
-    //  INNER — RoundedPanel (draws rounded rect background)
+    //  INNER — RoundedPanel
     // ====================================================
     private static class RoundedPanel extends JPanel {
         private final int   radius;
@@ -1044,7 +1126,7 @@ public class MakeReservationPanel extends JPanel {
     }
 
     // ====================================================
-    //  INNER — RoundedTextField (draws rounded rect border)
+    //  INNER — RoundedTextField
     // ====================================================
     private static class RoundedTextField extends JTextField {
         private final int radius;
