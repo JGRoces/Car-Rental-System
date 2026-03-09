@@ -102,6 +102,8 @@ public class BrowseCarsGUI extends JPanel {
     private List<Car> allCars;
     private Car       selectedCar;
     private boolean   detailVisible = false;
+    // Stacked filters: key=category ("Type","Brand","Price","Transmission"), value=selected
+    private java.util.Map<String, String> activeFilters = new java.util.LinkedHashMap<>();
 
     // ─────────────────────────────────────────────
     //  Components
@@ -112,7 +114,7 @@ public class BrowseCarsGUI extends JPanel {
     private JPanel     bodyPanel;
     private JPanel     detailPanel;
     private JPanel     selectedCardPanel;
-
+    private JPanel     chipRow;
     // ─────────────────────────────────────────────
     //  Callback — set by CustomerDashboardGUI
     // ─────────────────────────────────────────────
@@ -177,11 +179,10 @@ public class BrowseCarsGUI extends JPanel {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(CLR_BG);
         header.setAlignmentX(Component.LEFT_ALIGNMENT);
-        header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
-
-        JPanel left = new JPanel();
-        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
-        left.setBackground(CLR_BG);
+        header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
+        JPanel titleBlock = new JPanel();
+        titleBlock.setLayout(new BoxLayout(titleBlock, BoxLayout.Y_AXIS));
+        titleBlock.setBackground(CLR_BG);
 
         JLabel title = new JLabel("Browse Cars");
         title.setFont(FONT_TITLE);
@@ -191,8 +192,19 @@ public class BrowseCarsGUI extends JPanel {
         resultsCountLabel.setFont(FONT_SUBTITLE);
         resultsCountLabel.setForeground(CLR_GRAY);
 
-        left.add(title);
-        left.add(resultsCountLabel);
+        titleBlock.add(title);
+        titleBlock.add(resultsCountLabel);
+
+        // Chip row sits independently below the title block
+        chipRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        chipRow.setBorder(new EmptyBorder(8, 0, 0, 0));
+        chipRow.setBackground(CLR_BG);
+        chipRow.setVisible(false);
+
+        JPanel left = new JPanel(new BorderLayout());
+        left.setBackground(CLR_BG);
+        left.add(titleBlock, BorderLayout.NORTH);
+        left.add(chipRow,    BorderLayout.CENTER);
 
         JButton refreshBtn = new JButton("Refresh") {
             @Override
@@ -268,7 +280,7 @@ public class BrowseCarsGUI extends JPanel {
         searchField.setForeground(CLR_GRAY);
         searchField.setBorder(null);
         searchField.setOpaque(false);
-        searchField.setText("Search by brand, model, or plate number...");
+        searchField.setText("Search cars...");
 
         searchField.addFocusListener(new FocusAdapter() {
             @Override
@@ -281,13 +293,22 @@ public class BrowseCarsGUI extends JPanel {
             @Override
             public void focusLost(FocusEvent e) {
                 if (searchField.getText().isBlank()) {
-                    searchField.setText("Search by brand, model, or plate number...");
+                    searchField.setText("Search cars...");
                     searchField.setForeground(CLR_GRAY);
                 }
             }
         });
-        searchField.addActionListener(e -> filterCards(searchField.getText().trim()));
 
+    searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {    
+            public void insertUpdate(javax.swing.event.DocumentEvent e)  { runSearch(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e)  { runSearch(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { runSearch(); }
+            private void runSearch() {
+                String text = searchField.getText().trim();
+                if (text.equals("Search cars...")) return;
+                filterCards(text);
+            }
+        });
         wrapper.add(icon,        BorderLayout.WEST);
         wrapper.add(searchField, BorderLayout.CENTER);
         panel.add(wrapper,       BorderLayout.CENTER);
@@ -396,7 +417,7 @@ public class BrowseCarsGUI extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
-                // Clip to rounded top corners only
+                // Clip to rounded corners for the image/background only
                 g2.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 20, 20));
 
                 if (cardImg != null) {
@@ -412,10 +433,6 @@ public class BrowseCarsGUI extends JPanel {
                     g2.setColor(new Color(235, 238, 245));
                     g2.fillRect(0, 0, getWidth(), getHeight());
                 }
-
-                // Color stripe — 4px bar at the bottom edge of the image area
-                g2.setColor(carColor);
-                g2.fillRect(0, getHeight() - 4, getWidth(), 4);
 
                 g2.dispose();
             }
@@ -448,7 +465,7 @@ public class BrowseCarsGUI extends JPanel {
         info.add(metaLbl);
         info.add(Box.createVerticalStrut(2));
 
-        JLabel specLbl = new JLabel(car.getTransmission() + "  \u00B7  " + car.getSeatCapacity() + " seats");
+        JLabel specLbl = new JLabel(car.getTransmission() + "  \u00B7  " + car.getFuelType() + "  \u00B7  " + car.getSeatCapacity() + " seats");
         specLbl.setFont(FONT_SMALL);
         specLbl.setForeground(CLR_GRAY);
         specLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -672,6 +689,7 @@ public class BrowseCarsGUI extends JPanel {
         body.add(Box.createVerticalStrut(8));
         body.add(buildSpecRow("Plate Number",  car.getPlateNumber()));
         body.add(buildSpecRow("Transmission",  car.getTransmission()));
+        body.add(buildSpecRow("Fuel Type",     car.getFuelType()));
         body.add(buildSpecRow("Seat Capacity", car.getSeatCapacity() + " seats"));
         body.add(buildSpecRow("Category",      car.getCategory()));
         body.add(buildColorSpecRow(car.getColor()));   // ← color row with swatch
@@ -950,51 +968,175 @@ public class BrowseCarsGUI extends JPanel {
     }
 
     // ====================================================
-    //  PUBLIC FILTER METHODS
+    //  PUBLIC FILTER METHODS  (stackable — AND logic)
     // ====================================================
     public void filterByType(String type) {
-        List<Car> filtered = allCars.stream()
-                .filter(c -> c.getCategory().equalsIgnoreCase(type))
-                .toList();
-        populateGrid(filtered);
-        closeDetailIfOpen();
+        activeFilters.put("Type", type);
+        applyFilters();
     }
 
     public void filterByBrand(String brand) {
-        List<Car> filtered = allCars.stream()
-                .filter(c -> c.getBrand().equalsIgnoreCase(brand))
-                .toList();
-        populateGrid(filtered);
-        closeDetailIfOpen();
+        activeFilters.put("Brand", brand);
+        applyFilters();
     }
 
     public void filterByPriceRange(String range) {
-        List<Car> filtered = allCars.stream()
-                .filter(c -> matchesPriceRange(c.getDailyRate(), range))
-                .toList();
-        populateGrid(filtered);
-        closeDetailIfOpen();
+        activeFilters.put("Price", range);
+        applyFilters();
+    }
+
+    public void filterByTransmission(String transmission) {
+        activeFilters.put("Transmission", transmission);
+        applyFilters();
+    }
+
+    public void filterByFuelType(String fuelType) {
+        activeFilters.put("Fuel Type", fuelType);
+        applyFilters();
     }
 
     public void showAll() {
-        populateGrid(allCars);
-        closeDetailIfOpen();
+        activeFilters.clear();
+        applyFilters();
     }
 
-    private void filterCards(String query) {
-        if (query.isBlank()) {
-            populateGrid(allCars);
-            return;
-        }
-        String q = query.toLowerCase();
+    /** Returns the active value for a given category — used by dropdown checkmark. */
+    public String getActiveFilterForCategory(String category) {
+        return activeFilters.get(category);
+    }
+
+    /** Returns any active value — used for backward compat. */
+    public String getActiveFilterValue() {
+        return activeFilters.isEmpty() ? null : activeFilters.values().iterator().next();
+    }
+
+    // ====================================================
+    //  FILTER ENGINE
+    // ====================================================
+    private void applyFilters() {
         List<Car> filtered = allCars.stream()
-                .filter(c -> c.getBrand().toLowerCase().contains(q)
-                        || c.getModel().toLowerCase().contains(q)
-                        || c.getPlateNumber().toLowerCase().contains(q))
-                .toList();
+            .filter(c -> {
+                for (java.util.Map.Entry<String, String> f : activeFilters.entrySet()) {
+                    boolean match = switch (f.getKey()) {
+                        case "Type"         -> c.getCategory().equalsIgnoreCase(f.getValue());
+                        case "Brand"        -> c.getBrand().equalsIgnoreCase(f.getValue());
+                        case "Price"        -> matchesPriceRange(c.getDailyRate(), f.getValue());
+                        case "Transmission" -> c.getTransmission().equalsIgnoreCase(f.getValue());
+                        case "Fuel Type"     -> c.getFuelType() != null && c.getFuelType().equalsIgnoreCase(f.getValue());
+                        default             -> true;
+                    };
+                    if (!match) return false;
+                }
+                return true;
+            })
+            .toList();
+        rebuildChipRow();
         populateGrid(filtered);
         closeDetailIfOpen();
     }
+
+    // ====================================================
+    //  CHIP ROW
+    // ====================================================
+    private void rebuildChipRow() {
+        chipRow.removeAll();
+        if (activeFilters.isEmpty()) {
+            chipRow.setVisible(false);
+            chipRow.revalidate();
+            chipRow.repaint();
+            return;
+        }
+        for (java.util.Map.Entry<String, String> f : activeFilters.entrySet()) {
+            chipRow.add(buildChip(f.getKey(), f.getValue()));
+        }
+        if (activeFilters.size() > 1) {
+            JLabel clearAll = new JLabel("Clear All");
+            clearAll.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            clearAll.setForeground(new Color(220, 38, 38));
+            clearAll.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            clearAll.setBorder(new javax.swing.border.EmptyBorder(2, 8, 2, 4));
+            clearAll.addMouseListener(new MouseAdapter() {
+                @Override public void mouseClicked(MouseEvent e) { showAll(); }
+            });
+            chipRow.add(clearAll);
+        }
+        chipRow.setVisible(true);
+        chipRow.revalidate();
+        chipRow.repaint();
+    }
+
+    private JPanel buildChip(String category, String value) {
+        JPanel chip = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0)) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        chip.setOpaque(true);
+        chip.setBorder(BorderFactory.createCompoundBorder(
+            new javax.swing.border.LineBorder(CLR_BLUE, 1, true),
+            new javax.swing.border.EmptyBorder(4, 8, 4, 8)
+        ));
+        
+        JLabel lbl = new JLabel(category + ": " + value);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        lbl.setForeground(CLR_BLUE);
+
+        JLabel x = new JLabel("\u00D7");
+        x.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        x.setForeground(CLR_BLUE);
+        x.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        x.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) {
+                activeFilters.remove(category);
+                applyFilters();
+            }
+        });
+
+        chip.add(lbl);
+        chip.add(x);
+        return chip;
+    }
+        // ── Active filter chip ────────────────────────────────────
+        private void filterCards(String query) {
+                if (query.isBlank()) {
+                    populateGrid(allCars);
+                    return;
+                }
+
+                // Split into individual words so "Toyota Red" matches a red Toyota
+                String[] tokens = query.toLowerCase().trim().split("\\s+");
+
+                List<Car> filtered = allCars.stream()
+                    .filter(c -> {
+                        // Build a single searchable string from all visible card fields
+                        String haystack = String.join(" ",
+                            c.getBrand(),
+                            c.getModel(),
+                            String.valueOf(c.getYear()),
+                            c.getCategory(),
+                            c.getTransmission(),
+                            c.getFuelType()     != null ? c.getFuelType()     : "",
+                            c.getColor()        != null ? c.getColor()        : "",
+                            String.valueOf(c.getSeatCapacity()),
+                            c.getDailyRate().toPlainString()
+                        ).toLowerCase();
+
+                        // Every token must appear somewhere in the haystack
+                        for (String token : tokens) {
+                            if (!haystack.contains(token)) return false;
+                        }
+                        return true;
+                    })
+                    .toList();
+
+                populateGrid(filtered);
+                closeDetailIfOpen();
+            }
 
     private boolean matchesPriceRange(BigDecimal rate, String range) {
         double r = rate.doubleValue();

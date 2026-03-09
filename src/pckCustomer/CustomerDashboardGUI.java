@@ -314,7 +314,16 @@ public class CustomerDashboardGUI extends JFrame {
         @Override public void mouseEntered(MouseEvent e) {
             btn.setBackground(CLR_MENU_HOVER);
             animateUnderline(btn, true);
-            showDropdown(btn);
+            // If hovering a different button, close the old dropdown first
+            if (activeDropdown != null && activeDropdown.isShowing() && activeDropdownBtn != btn) {
+                activeDropdown.dispose();
+                activeDropdown = null;
+                activeDropdownBtn = null;
+            }
+            // Only open if not already showing for this button
+            if (activeDropdown == null || !activeDropdown.isShowing()) {
+                showDropdown(btn);
+            }
         }
         @Override public void mouseExited(MouseEvent e) {
             btn.setBackground(CLR_MENUBAR);
@@ -441,6 +450,7 @@ public class CustomerDashboardGUI extends JFrame {
     //  DROPDOWN MENU (for nav buttons that have one)       
     // ====================================================
         private JWindow activeDropdown = null;
+        private JButton activeDropdownBtn = null;
 
     private void showDropdown(JButton btn) {
         if (activeDropdown != null) {
@@ -448,84 +458,126 @@ public class CustomerDashboardGUI extends JFrame {
             activeDropdown = null;
         }
 
-        // Only show dropdown for Browse Cars and Make a Reservation
         String label = ((JLabel) btn.getComponents()[1]).getText();
         String[][] items = getDropdownItems(label);
         if (items == null) return;
 
         JWindow dropdown = new JWindow(this);
         activeDropdown = dropdown;
+        activeDropdownBtn = btn;
 
-        JPanel panel = new JPanel(new GridLayout(1, items.length, 20, 0));
-        panel.setBackground(new Color(20, 20, 20, 153));
+        // ── Background panel ──────────────────────────────────────
+        // Must be opaque with custom paintComponent — JWindow ignores
+        // setBackground on some L&Fs, so we paint manually.
+        JPanel panel = new JPanel(new GridLayout(1, items.length, 24, 0)) {
+            @Override protected void paintComponent(Graphics g) {
+                g.setColor(Color.WHITE);
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        panel.setOpaque(true);
+        panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(60, 60, 60, 180), 1),
-            new EmptyBorder(16, 20, 16, 20)
+            BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
+            new EmptyBorder(14, 18, 14, 18)
         ));
-        panel.setOpaque(false);
 
         for (String[] col : items) {
             JPanel colPanel = new JPanel();
             colPanel.setLayout(new BoxLayout(colPanel, BoxLayout.Y_AXIS));
-            colPanel.setOpaque(false);
+            colPanel.setOpaque(true);
+            colPanel.setBackground(Color.WHITE);
 
+            // Section header
             JLabel header = new JLabel(col[0].toUpperCase());
-            header.setFont(new Font("Segoe UI", Font.BOLD, 11));
-            header.setForeground(new Color(80, 80,80));
-            header.setBorder(new EmptyBorder(0, 0, 8, 0));
+            header.setFont(new Font("Segoe UI", Font.BOLD, 10));
+            header.setForeground(new Color(150, 150, 150));
+            header.setBorder(new EmptyBorder(0, 4, 6, 4));
+            header.setAlignmentX(Component.LEFT_ALIGNMENT);
             colPanel.add(header);
 
             for (int i = 1; i < col.length; i++) {
-                JLabel item = new JLabel(col[i]);
-                item.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-                item.setForeground(new Color(50, 50, 50));
-                item.setBorder(new EmptyBorder(3, 0, 3, 0));
-                item.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                item.addMouseListener(new MouseAdapter() {
+                final String colCategory = col[0];
+                final String value = col[i];
+
+                // ── Item row ──────────────────────────────────────
+                // JPanel fills full column width → reliable hit area.
+                // MouseListener is on the panel, not the inner label.
+                JPanel itemRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0)) {
+                    @Override protected void paintComponent(Graphics g) {
+                        if (Boolean.TRUE.equals(getClientProperty("hovered"))) {
+                            g.setColor(new Color(240, 245, 255));
+                            g.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+                        }
+                    }
+                };
+                itemRow.setOpaque(false);
+                itemRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+                itemRow.setBorder(new EmptyBorder(3, 4, 3, 8));
+                itemRow.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+                boolean isActiveFilter = value.equals(browseCarsPanel.getActiveFilterForCategory(colCategory));
+                JLabel itemLbl = new JLabel((isActiveFilter ? "✓  " : "     ") + value);
+                itemLbl.setFont(new Font("Segoe UI", isActiveFilter ? Font.BOLD : Font.PLAIN, 12));
+                itemLbl.setForeground(isActiveFilter ? new Color(37, 99, 235) : new Color(18, 18, 18));
+                itemRow.add(itemLbl);
+
+                itemRow.addMouseListener(new MouseAdapter() {
                     public void mouseEntered(MouseEvent e) {
-                        item.setForeground(new Color(18, 18, 18));
+                        itemRow.putClientProperty("hovered", true);
+                        itemRow.repaint();
                     }
                     public void mouseExited(MouseEvent e) {
-                        item.setForeground(new Color(50, 50, 50));
+                        itemRow.putClientProperty("hovered", false);
+                        itemRow.repaint();
+                    }
+                    public void mousePressed(MouseEvent e) {
+                        // Use mousePressed instead of mouseClicked — more
+                        // reliable; mouseClicked requires exact press+release
+                        // on same pixel which can fail on slow systems.
+                        dropdown.dispose();
+                        activeDropdown = null;
+                        applyBrowseFilter(colCategory, value);
                     }
                 });
-                colPanel.add(item);
+                colPanel.add(itemRow);
             }
             panel.add(colPanel);
         }
 
-        dropdown.setBackground(new Color(0, 0, 0, 0));
-        dropdown.getRootPane().setOpaque(false);
         dropdown.setContentPane(panel);
         dropdown.pack();
 
-        // Position below the button
+        // ── Position: flush below the nav button ─────────────────
         java.awt.Point loc = btn.getLocationOnScreen();
         dropdown.setLocation(loc.x, loc.y + btn.getHeight());
-
-        // Slide down animation
-        java.awt.Point finalLoc = dropdown.getLocation();
-        int finalHeight = dropdown.getHeight();
-        dropdown.setSize(dropdown.getWidth(), 0);
         dropdown.setVisible(true);
 
-        int[] h = {0};
-        javax.swing.Timer slideDown = new javax.swing.Timer(8, null);
-        slideDown.addActionListener(ev -> {
-            h[0] = Math.min(h[0] + 12, finalHeight);
-            dropdown.setSize(dropdown.getWidth(), h[0]);
-            dropdown.setLocation(finalLoc);
-            if (h[0] >= finalHeight) slideDown.stop();
-        });
-        slideDown.start();
-
-        // Hide when mouse leaves dropdown
-        panel.addMouseListener(new MouseAdapter() {
-            public void mouseExited(MouseEvent e) {
+        // ── Close on mouse-leave via polling timer ────────────────
+        // Wait until the mouse is INSIDE the dropdown first (confirms it
+        // has fully appeared), then close only when it leaves the bounds.
+        // This avoids false-close during the window's paint/position delay.
+        final boolean[] mouseEnteredDropdown = {false};
+        javax.swing.Timer hoverCheck = new javax.swing.Timer(40, null);
+        hoverCheck.addActionListener(ev -> {
+            if (!dropdown.isShowing()) {
+                hoverCheck.stop();
+                return;
+            }
+            java.awt.Point mouse = java.awt.MouseInfo.getPointerInfo().getLocation();
+            java.awt.Rectangle bounds = dropdown.getBounds();
+            if (bounds.contains(mouse)) {
+                // Mouse is inside — mark as entered, keep open
+                mouseEnteredDropdown[0] = true;
+            } else if (mouseEnteredDropdown[0]) {
+                // Mouse has entered before and now left — close
+                hoverCheck.stop();
                 dropdown.dispose();
                 activeDropdown = null;
             }
+            // If mouse never entered yet, do nothing (still appearing)
         });
+        hoverCheck.start();
     }
 
     private String[][] getDropdownItems(String label) {
@@ -534,8 +586,9 @@ public class CustomerDashboardGUI extends JFrame {
                 return new String[][] {
                     {"By Type",    "Sedan", "SUV", "MPV", "Van", "Pickup"},
                     {"By Brand",   "Toyota", "Honda", "Mitsubishi", "BYD"},
-                    {"By Price",       "Under \u20B11,000", "\u20B11,000 - \u20B12,000", "Above \u20B12,000"},
+                    {"By Price",       "Under \u20B11,000", "\u20B11,000 \u2013 \u20B12,000", "Above \u20B12,000"},
                     {"Transmission",   "Automatic", "Manual", "CVT"},
+                    {"Fuel Type",      "Gasoline", "Diesel", "Hybrid", "Electric"},
                 };
             case "Make a Reservation":
                 return new String[][] {
@@ -554,6 +607,20 @@ public class CustomerDashboardGUI extends JFrame {
                 };
             default:
                 return null;
+        }
+    }
+
+    // ====================================================
+    //  BROWSE CARS FILTER DISPATCHER
+    // ====================================================
+    private void applyBrowseFilter(String category, String value) {
+        switchPanel(0); // navigate to Browse Cars first
+        switch (category) {
+            case "By Type"      -> browseCarsPanel.filterByType(value);
+            case "By Brand"     -> browseCarsPanel.filterByBrand(value);
+            case "By Price"     -> browseCarsPanel.filterByPriceRange(value);
+            case "Transmission" -> browseCarsPanel.filterByTransmission(value);
+            case "Fuel Type"    -> browseCarsPanel.filterByFuelType(value);
         }
     }
 }

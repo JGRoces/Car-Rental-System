@@ -7,10 +7,10 @@ import java.math.BigDecimal;
  * Represents a car in the inventory.
  * Maps to the `cars` table.
  *
- * category     ENUM : Sedan, SUV, Van, Truck, Pickup, Coupe, Minivan
- * transmission ENUM : Automatic, Manual
+ * category     ENUM : Sedan, SUV, Van, Truck, Pickup, Coupe, Minivan, MPV
+ * transmission ENUM : Automatic, Manual, CVT
+ * fuel_type    ENUM : Gasoline, Diesel, Hybrid, Electric
  * status       ENUM : AVAILABLE, RENTED, MAINTENANCE
- * color        VARCHAR(30) : e.g. "Pearl White", "Midnight Black"
  */
 public class Car {
 
@@ -21,6 +21,7 @@ public class Car {
     private String     plateNumber;
     private String     category;
     private String     transmission;
+    private String     fuelType;
     private int        seatCapacity;
     private BigDecimal dailyRate;
     private String     status;
@@ -28,10 +29,10 @@ public class Car {
     private String     color;
 
     // -------------------------
-    // Constructor — New car (before DB insert)
+    // Constructor — New car (before DB insert, no carId yet)
     // -------------------------
     public Car(String brand, String model, int year, String plateNumber,
-               String category, String transmission, int seatCapacity,
+               String category, String transmission, String fuelType, int seatCapacity,
                BigDecimal dailyRate) {
         this.brand        = brand;
         this.model        = model;
@@ -39,6 +40,7 @@ public class Car {
         this.plateNumber  = plateNumber;
         this.category     = category;
         this.transmission = transmission;
+        this.fuelType     = fuelType;
         this.seatCapacity = seatCapacity;
         this.dailyRate    = dailyRate;
         this.status       = "AVAILABLE";
@@ -50,7 +52,7 @@ public class Car {
     // Constructor — Loaded from DB (has carId, status, imagePath, color)
     // -------------------------
     public Car(int carId, String brand, String model, int year, String plateNumber,
-               String category, String transmission, int seatCapacity,
+               String category, String transmission, String fuelType, int seatCapacity,
                BigDecimal dailyRate, String status, String imagePath, String color) {
         this.carId        = carId;
         this.brand        = brand;
@@ -59,6 +61,7 @@ public class Car {
         this.plateNumber  = plateNumber;
         this.category     = category;
         this.transmission = transmission;
+        this.fuelType     = fuelType;
         this.seatCapacity = seatCapacity;
         this.dailyRate    = dailyRate;
         this.status       = status;
@@ -76,6 +79,7 @@ public class Car {
     public String     getPlateNumber()  { return plateNumber;  }
     public String     getCategory()     { return category;     }
     public String     getTransmission() { return transmission; }
+    public String     getFuelType()     { return fuelType;     }
     public int        getSeatCapacity() { return seatCapacity; }
     public BigDecimal getDailyRate()    { return dailyRate;    }
     public String     getStatus()       { return status;       }
@@ -92,6 +96,7 @@ public class Car {
     public void setPlateNumber(String plateNumber)   { this.plateNumber  = plateNumber;  }
     public void setCategory(String category)         { this.category     = category;     }
     public void setTransmission(String transmission) { this.transmission = transmission; }
+    public void setFuelType(String fuelType)         { this.fuelType     = fuelType;     }
     public void setSeatCapacity(int seatCapacity)    { this.seatCapacity = seatCapacity; }
     public void setDailyRate(BigDecimal dailyRate)   { this.dailyRate    = dailyRate;    }
     public void setStatus(String status)             { this.status       = status;       }
@@ -127,7 +132,8 @@ public class Car {
                ", plate='"        + plateNumber  + '\'' +
                ", category='"     + category     + '\'' +
                ", transmission='" + transmission + '\'' +
-               ", seatCapacity="  + seatCapacity  +
+               ", fuelType='"     + fuelType     + '\'' +
+               ", seatCapacity="  + seatCapacity +
                ", dailyRate="     + dailyRate    +
                ", status='"       + status       + '\'' +
                ", imagePath='"    + imagePath    + '\'' +
