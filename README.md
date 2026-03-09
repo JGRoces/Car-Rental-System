@@ -21,7 +21,7 @@ This system allows customers to browse available cars, make reservations, and ma
 | Name | GitHub Username | Role |
 |------|----------------|------|
 | Joseph Gabriel A. Roces | @JGR-Dev-Scholar | Quality Engineer |
-| Sean Patrick Brix V. Salamera | @username | Data Engineer |
+| Sean Patrick Brix V. Salamera | @aseanpat | Data Engineer |
 | Marvin Karl R. Sangco | @Marvin-Sangco | SWE - BackEnd |
 | Leonard Vincent L. Camat | @Pan-2006 | SWE - FrontEnd |
 
