@@ -7,8 +7,9 @@ import java.math.BigDecimal;
  * Represents a car in the inventory.
  * Maps to the `cars` table.
  *
- * category     ENUM : Sedan, SUV, Van, Truck, Pickup, Coupe, Minivan
- * transmission ENUM : Automatic, Manual
+ * category     ENUM : Sedan, SUV, Van, Truck, Pickup, Coupe, Minivan, MPV
+ * transmission ENUM : Automatic, Manual, CVT
+ * fuel_type    ENUM : Gasoline, Diesel, Hybrid, Electric
  * status       ENUM : AVAILABLE, RENTED, MAINTENANCE
  */
 public class Car {
@@ -20,16 +21,18 @@ public class Car {
     private String     plateNumber;
     private String     category;
     private String     transmission;
+    private String     fuelType;
     private int        seatCapacity;
     private BigDecimal dailyRate;
     private String     status;
-    private String     imagePath;     // relative path e.g. "assets/images/cars/toyota-vios.png"
+    private String     imagePath;
+    private String     color;
 
     // -------------------------
-    // Constructor — New car (before DB insert)
+    // Constructor — New car (before DB insert, no carId yet)
     // -------------------------
     public Car(String brand, String model, int year, String plateNumber,
-               String category, String transmission, int seatCapacity,
+               String category, String transmission, String fuelType, int seatCapacity,
                BigDecimal dailyRate) {
         this.brand        = brand;
         this.model        = model;
@@ -37,18 +40,20 @@ public class Car {
         this.plateNumber  = plateNumber;
         this.category     = category;
         this.transmission = transmission;
+        this.fuelType     = fuelType;
         this.seatCapacity = seatCapacity;
         this.dailyRate    = dailyRate;
-        this.status       = "AVAILABLE"; // default on creation
+        this.status       = "AVAILABLE";
         this.imagePath    = null;
+        this.color        = null;
     }
 
     // -------------------------
-    // Constructor — Loaded from DB (has carId, status, imagePath)
+    // Constructor — Loaded from DB (has carId, status, imagePath, color)
     // -------------------------
     public Car(int carId, String brand, String model, int year, String plateNumber,
-               String category, String transmission, int seatCapacity,
-               BigDecimal dailyRate, String status, String imagePath) {
+               String category, String transmission, String fuelType, int seatCapacity,
+               BigDecimal dailyRate, String status, String imagePath, String color) {
         this.carId        = carId;
         this.brand        = brand;
         this.model        = model;
@@ -56,10 +61,12 @@ public class Car {
         this.plateNumber  = plateNumber;
         this.category     = category;
         this.transmission = transmission;
+        this.fuelType     = fuelType;
         this.seatCapacity = seatCapacity;
         this.dailyRate    = dailyRate;
         this.status       = status;
         this.imagePath    = imagePath;
+        this.color        = color;
     }
 
     // -------------------------
@@ -72,10 +79,12 @@ public class Car {
     public String     getPlateNumber()  { return plateNumber;  }
     public String     getCategory()     { return category;     }
     public String     getTransmission() { return transmission; }
+    public String     getFuelType()     { return fuelType;     }
     public int        getSeatCapacity() { return seatCapacity; }
     public BigDecimal getDailyRate()    { return dailyRate;    }
     public String     getStatus()       { return status;       }
     public String     getImagePath()    { return imagePath;    }
+    public String     getColor()        { return color;        }
 
     // -------------------------
     // Setters
@@ -87,10 +96,12 @@ public class Car {
     public void setPlateNumber(String plateNumber)   { this.plateNumber  = plateNumber;  }
     public void setCategory(String category)         { this.category     = category;     }
     public void setTransmission(String transmission) { this.transmission = transmission; }
+    public void setFuelType(String fuelType)         { this.fuelType     = fuelType;     }
     public void setSeatCapacity(int seatCapacity)    { this.seatCapacity = seatCapacity; }
     public void setDailyRate(BigDecimal dailyRate)   { this.dailyRate    = dailyRate;    }
     public void setStatus(String status)             { this.status       = status;       }
     public void setImagePath(String imagePath)       { this.imagePath    = imagePath;    }
+    public void setColor(String color)               { this.color        = color;        }
 
     // -------------------------
     // Convenience Methods
@@ -114,17 +125,19 @@ public class Car {
     @Override
     public String toString() {
         return "Car{" +
-               "carId="        + carId        +
-               ", brand='"     + brand        + '\'' +
-               ", model='"     + model        + '\'' +
-               ", year="       + year         +
-               ", plate='"     + plateNumber  + '\'' +
-               ", category='"  + category     + '\'' +
+               "carId="           + carId        +
+               ", brand='"        + brand        + '\'' +
+               ", model='"        + model        + '\'' +
+               ", year="          + year         +
+               ", plate='"        + plateNumber  + '\'' +
+               ", category='"     + category     + '\'' +
                ", transmission='" + transmission + '\'' +
-               ", seatCapacity=" + seatCapacity  +
-               ", dailyRate="  + dailyRate    +
-               ", status='"    + status       + '\'' +
-               ", imagePath='" + imagePath    + '\'' +
+               ", fuelType='"     + fuelType     + '\'' +
+               ", seatCapacity="  + seatCapacity +
+               ", dailyRate="     + dailyRate    +
+               ", status='"       + status       + '\'' +
+               ", imagePath='"    + imagePath    + '\'' +
+               ", color='"        + color        + '\'' +
                '}';
     }
 }

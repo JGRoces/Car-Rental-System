@@ -46,6 +46,11 @@ public class CarService {
         return carDAO.getCarsByStatus(status);
     }
 
+    /** Returns distinct brand names from the cars table — used for dynamic dropdown */
+    public static List<String> getDistinctBrands() {
+        return carDAO.getDistinctBrands();
+    }
+
     // ====================================================
     //  CREATE
     // ====================================================
@@ -53,32 +58,23 @@ public class CarService {
     /**
      * Adds a new car to the inventory.
      * Returns the generated car_id on success, -1 on failure.
-     *
-     * Validations:
-     *  - All required fields must be non-null and non-blank
-     *  - Daily rate must be greater than 0
-     *  - Plate number must be unique
      */
     public static int addCar(Car car) {
-        // Validate required fields
-        if (isBlank(car.getBrand()))       { System.err.println("[CarService] Brand is required.");        return -1; }
-        if (isBlank(car.getModel()))       { System.err.println("[CarService] Model is required.");        return -1; }
-        if (car.getYear() < 1900)          { System.err.println("[CarService] Invalid year.");             return -1; }
-        if (isBlank(car.getPlateNumber())) { System.err.println("[CarService] Plate number is required."); return -1; }
-        if (isBlank(car.getCategory()))    { System.err.println("[CarService] Category is required.");     return -1; }
-        if (isBlank(car.getTransmission())){ System.err.println("[CarService] Transmission is required."); return -1; }
+        if (isBlank(car.getBrand()))       { System.err.println("[CarService] Brand is required.");         return -1; }
+        if (isBlank(car.getModel()))       { System.err.println("[CarService] Model is required.");         return -1; }
+        if (car.getYear() < 1900)          { System.err.println("[CarService] Invalid year.");              return -1; }
+        if (isBlank(car.getPlateNumber())) { System.err.println("[CarService] Plate number is required.");  return -1; }
+        if (isBlank(car.getCategory()))    { System.err.println("[CarService] Category is required.");      return -1; }
+        if (isBlank(car.getTransmission())){ System.err.println("[CarService] Transmission is required.");  return -1; }
         if (car.getSeatCapacity() <= 0)    { System.err.println("[CarService] Seat capacity must be > 0."); return -1; }
         if (car.getDailyRate() == null || car.getDailyRate().compareTo(BigDecimal.ZERO) <= 0) {
             System.err.println("[CarService] Daily rate must be greater than 0.");
             return -1;
         }
-
-        // Check for duplicate plate
         if (carDAO.plateExists(car.getPlateNumber())) {
             System.err.println("[CarService] Plate number '" + car.getPlateNumber() + "' already exists.");
             return -1;
         }
-
         return carDAO.insertCar(car);
     }
 
@@ -89,23 +85,20 @@ public class CarService {
     /**
      * Updates all fields of an existing car.
      * Returns true on success, false on failure.
-     *
-     * Validations: same as addCar, plus carId must be valid
      */
     public static boolean updateCar(Car car) {
-        if (car.getCarId() <= 0)           { System.err.println("[CarService] Invalid car ID.");           return false; }
-        if (isBlank(car.getBrand()))       { System.err.println("[CarService] Brand is required.");        return false; }
-        if (isBlank(car.getModel()))       { System.err.println("[CarService] Model is required.");        return false; }
-        if (car.getYear() < 1900)          { System.err.println("[CarService] Invalid year.");             return false; }
-        if (isBlank(car.getPlateNumber())) { System.err.println("[CarService] Plate number is required."); return false; }
-        if (isBlank(car.getCategory()))    { System.err.println("[CarService] Category is required.");     return false; }
-        if (isBlank(car.getTransmission())){ System.err.println("[CarService] Transmission is required."); return false; }
+        if (car.getCarId() <= 0)           { System.err.println("[CarService] Invalid car ID.");            return false; }
+        if (isBlank(car.getBrand()))       { System.err.println("[CarService] Brand is required.");         return false; }
+        if (isBlank(car.getModel()))       { System.err.println("[CarService] Model is required.");         return false; }
+        if (car.getYear() < 1900)          { System.err.println("[CarService] Invalid year.");              return false; }
+        if (isBlank(car.getPlateNumber())) { System.err.println("[CarService] Plate number is required.");  return false; }
+        if (isBlank(car.getCategory()))    { System.err.println("[CarService] Category is required.");      return false; }
+        if (isBlank(car.getTransmission())){ System.err.println("[CarService] Transmission is required.");  return false; }
         if (car.getSeatCapacity() <= 0)    { System.err.println("[CarService] Seat capacity must be > 0."); return false; }
         if (car.getDailyRate() == null || car.getDailyRate().compareTo(BigDecimal.ZERO) <= 0) {
             System.err.println("[CarService] Daily rate must be greater than 0.");
             return false;
         }
-
         return carDAO.updateCar(car);
     }
 
@@ -132,8 +125,7 @@ public class CarService {
     /**
      * Deletes a car from the inventory.
      * Returns true on success.
-     * ⚠ Will fail if the car has existing rentals (FK constraint).
-     *    Handle the false return in the GUI with a user-friendly message.
+     * Will fail if the car has existing rentals (FK constraint).
      */
     public static boolean deleteCar(int carId) {
         if (carId <= 0) {

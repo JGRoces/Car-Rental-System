@@ -19,8 +19,8 @@ public class Main {
             //LoginGUI loginWindow = new LoginGUI();
             //loginWindow.setVisible(true);
 
-            CustomerDashboardGUI customerGUI = new CustomerDashboardGUI();
-            customerGUI.setVisible(true);
+            CustomerDashboardGUI customerDashboardGUI = new CustomerDashboardGUI();
+            customerDashboardGUI.setVisible(true);
         });
     }
 }

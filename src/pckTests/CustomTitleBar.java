@@ -1,84 +1,93 @@
 package pckTests;
 
-import com.formdev.flatlaf.FlatLaf;
-import com.formdev.flatlaf.ui.FlatRootPaneUI;
-
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.RoundRectangle2D;
 
 /**
  * CustomTitleBar.java
- * Custom title bar using FlatLaf's built-in window decoration support.
- * Native Windows animations (minimize, maximize, restore, snap) work
- * automatically. No JNA or manual DWM calls needed.
+ * Custom title bar with theme support via ThemeManager.
+ * Automatically repaints when the theme is toggled.
  *
- * Usage (same 2 lines as before on any JFrame):
- *   // 1. In initWindow() — before setVisible()
- *   getRootPane().putClientProperty("FlatLaf.titleBarBackground", new Color(18,18,18));
- *   getRootPane().putClientProperty("FlatLaf.titleBarForeground", Color.WHITE);
- *   getRootPane().putClientProperty("JRootPane.titleBarBackground", new Color(18,18,18));
- *
- *   // 2. In initComponents() — very first line
+ * Usage (same 2 lines on any JFrame):
+ *   setUndecorated(true);
  *   add(new CustomTitleBar(this, "Window Title"), BorderLayout.NORTH);
+ *
+ * Theme changes are handled automatically — no extra wiring needed per window.
  */
 public class CustomTitleBar extends JPanel {
 
-    // -------------------------
-    // Appearance
-    // -------------------------
-    private static final int   BAR_HEIGHT   = 40;
-    private static final Color CLR_BAR      = new Color(18, 18, 18);
-    private static final Color CLR_TITLE    = new Color(200, 200, 200);
-    private static final Color CLR_CLOSE    = new Color(220, 38, 38);
-    private static final Color CLR_MINIMIZE = new Color(234, 179, 8);
-    private static final Color CLR_MAXIMIZE = new Color(22, 163, 74);
-    private static final Font  FONT_TITLE   = new Font("Segoe UI", Font.PLAIN, 12);
+    private static final int  BAR_HEIGHT = 40;
+    private static final Font FONT_TITLE = new Font("Segoe UI", Font.PLAIN, 12);
 
-    // -------------------------
+    // Animation config
+    private static final int ANIM_DURATION_MS = 150;
+    private final int animDelayMs;
+    private final int animSteps;
+
     // State
-    // -------------------------
     private final JFrame    parentFrame;
     private final String    title;
     private       Point     dragStart;
     private       boolean   isMaximized = false;
+    private       boolean   isAnimating = false;
     private       Rectangle normalBounds;
+
+    // Themed sub-components that need repainting
+    private JPanel titleBarPanel;
+    private JLabel titleLabel;
+    private JButton minimizeBtn, maximizeBtn, closeBtn;
 
     // -------------------------
     // Constructor
     // -------------------------
-    public CustomTitleBar(JFrame parent, String title) {
+    public CustomTitleBar(JFrame parent, String windowTitle) {
         this.parentFrame = parent;
-        this.title       = title;
+        this.title       = windowTitle;
+
+        // Detect monitor refresh rate
+        int refreshRate = 60;
+        try {
+            GraphicsDevice screen   = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                                                          .getDefaultScreenDevice();
+            int detected = screen.getDisplayMode().getRefreshRate();
+            if (detected > 0 && detected != DisplayMode.REFRESH_RATE_UNKNOWN)
+                refreshRate = detected;
+        } catch (Exception ignored) {}
+
+        this.animDelayMs = Math.max(1, 1000 / refreshRate);
+        this.animSteps   = Math.max(4, ANIM_DURATION_MS / animDelayMs);
+
+        System.out.println("[CustomTitleBar] " + refreshRate + "hz detected | "
+            + animDelayMs + "ms/frame | " + animSteps + " steps");
 
         setPreferredSize(new Dimension(0, BAR_HEIGHT));
-        setBackground(CLR_BAR);
         setLayout(new BorderLayout());
 
         buildBar();
         enableDragging();
+        applyTheme();
+
+        // Register with ThemeManager — auto-repaint on theme toggle
+        ThemeManager.addListener(this::applyTheme);
     }
 
     // -------------------------
-    // Build the bar
+    // Build Bar
     // -------------------------
     private void buildBar() {
 
-        // LEFT — accent dots + title
+        // LEFT — accent dots + title label
         JPanel leftSide = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        leftSide.setBackground(CLR_BAR);
         leftSide.setOpaque(false);
 
         JPanel dots = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        dots.setBackground(CLR_BAR);
         dots.setOpaque(false);
 
         for (Color c : new Color[]{
-                new Color(37, 99, 235),
-                new Color(22, 163, 74),
-                new Color(234, 179, 8),
-                new Color(220, 38, 38) }) {
+                ThemeManager.CLR_BLUE, ThemeManager.CLR_GREEN,
+                ThemeManager.CLR_YELLOW, ThemeManager.CLR_RED }) {
             JPanel dot = new JPanel() {
                 @Override protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g.create();
@@ -94,27 +103,48 @@ public class CustomTitleBar extends JPanel {
             dots.add(dot);
         }
 
-        JLabel titleLabel = new JLabel(title);
+        titleLabel = new JLabel(title);
         titleLabel.setFont(FONT_TITLE);
-        titleLabel.setForeground(CLR_TITLE);
 
         leftSide.add(dots);
         leftSide.add(titleLabel);
 
-        // RIGHT — control buttons (drawn icons, no Unicode)
+        // RIGHT — control buttons
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        controls.setBackground(CLR_BAR);
         controls.setOpaque(false);
 
-        controls.add(buildControlButton("MIN", CLR_MINIMIZE, e -> parentFrame.setState(Frame.ICONIFIED)));
-        controls.add(buildControlButton("MAX", CLR_MAXIMIZE, e -> handleMaximize()));
-        controls.add(buildControlButton("X",   CLR_CLOSE,    e -> System.exit(0)));
+        minimizeBtn = buildControlButton("MIN", ThemeManager.CLR_YELLOW, e -> animateMinimize());
+        maximizeBtn = buildControlButton("MAX", ThemeManager.CLR_GREEN,  e -> animateToggleMaximize());
+        closeBtn    = buildControlButton("X",   ThemeManager.CLR_RED,    e -> System.exit(0));
 
-        JPanel lw = new JPanel(new GridBagLayout()); lw.setBackground(CLR_BAR); lw.setOpaque(false); lw.add(leftSide);
-        JPanel rw = new JPanel(new GridBagLayout()); rw.setBackground(CLR_BAR); rw.setOpaque(false); rw.add(controls);
+        controls.add(minimizeBtn);
+        controls.add(maximizeBtn);
+        controls.add(closeBtn);
+
+        JPanel lw = new JPanel(new GridBagLayout()); lw.setOpaque(false); lw.add(leftSide);
+        JPanel rw = new JPanel(new GridBagLayout()); rw.setOpaque(false); rw.add(controls);
 
         add(lw, BorderLayout.WEST);
         add(rw, BorderLayout.EAST);
+    }
+
+    // -------------------------
+    // Apply Theme
+    // Called on init and every time ThemeManager fires
+    // -------------------------
+    private void applyTheme() {
+        Color bar = ThemeManager.getTitleBar();
+
+        setBackground(bar);
+        if (titleLabel != null)
+            titleLabel.setForeground(new Color(200, 200, 200));
+
+        // Refresh button backgrounds to match new bar color
+        for (JButton btn : new JButton[]{ minimizeBtn, maximizeBtn, closeBtn }) {
+            if (btn != null) btn.setBackground(bar);
+        }
+
+        repaint();
     }
 
     // -------------------------
@@ -147,7 +177,7 @@ public class CustomTitleBar extends JPanel {
         };
 
         btn.setForeground(new Color(140, 140, 140));
-        btn.setBackground(CLR_BAR);
+        btn.setBackground(ThemeManager.getTitleBar());
         btn.setPreferredSize(new Dimension(46, BAR_HEIGHT));
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
@@ -160,7 +190,7 @@ public class CustomTitleBar extends JPanel {
                 btn.setForeground(Color.WHITE);
             }
             @Override public void mouseExited(MouseEvent e) {
-                btn.setBackground(CLR_BAR);
+                btn.setBackground(ThemeManager.getTitleBar());
                 btn.setForeground(new Color(140, 140, 140));
             }
         });
@@ -169,23 +199,133 @@ public class CustomTitleBar extends JPanel {
         return btn;
     }
 
-    // -------------------------
-    // Maximize / Restore
-    // FlatLaf handles the actual animation natively
-    // -------------------------
-    private void handleMaximize() {
+    // ====================================================
+    //  ANIMATIONS
+    // ====================================================
+
+    private void animateMinimize() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        Rectangle start  = parentFrame.getBounds();
+        Rectangle screen = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                                              .getMaximumWindowBounds();
+        int targetY = screen.y + screen.height;
+        int startX = start.x, startY = start.y, startW = start.width, startH = start.height;
+        int[] step = {0};
+
+        Timer timer = new Timer(animDelayMs, null);
+        timer.addActionListener(e -> {
+            step[0]++;
+            float p = easeIn((float) step[0] / animSteps);
+            parentFrame.setBounds(
+                (int)(startX + (startW - (int)(startW - startW * 0.3f * p)) / 2),
+                (int)(startY + (targetY - startY) * p),
+                (int)(startW - startW * 0.3f * p),
+                Math.max((int)(startH * (1f - p)), 1)
+            );
+            if (step[0] >= animSteps) {
+                timer.stop();
+                isAnimating = false;
+                parentFrame.setBounds(start);
+                parentFrame.setState(Frame.ICONIFIED);
+                parentFrame.addWindowStateListener(new WindowStateListener() {
+                    @Override public void windowStateChanged(WindowEvent evt) {
+                        if ((evt.getNewState() & Frame.ICONIFIED) == 0) {
+                            parentFrame.removeWindowStateListener(this);
+                            animateRestore(start);
+                        }
+                    }
+                });
+            }
+        });
+        timer.start();
+    }
+
+    private void animateRestore(Rectangle target) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        int startW = (int)(target.width * 0.5f), startH = (int)(target.height * 0.3f);
+        int startX = target.x + (target.width - startW) / 2;
+        int startY = target.y + (target.height - startH) / 2;
+
+        parentFrame.setBounds(startX, startY, startW, startH);
+        parentFrame.setVisible(true);
+
+        int[] step = {0};
+        Timer timer = new Timer(animDelayMs, null);
+        timer.addActionListener(e -> {
+            step[0]++;
+            float p = easeOut((float) step[0] / animSteps);
+            int cw = (int)(startW + (target.width  - startW) * p);
+            int ch = (int)(startH + (target.height - startH) * p);
+            parentFrame.setBounds(
+                target.x + (target.width  - cw) / 2,
+                target.y + (target.height - ch) / 2,
+                cw, ch
+            );
+            if (step[0] >= animSteps) {
+                timer.stop();
+                parentFrame.setBounds(target);
+                isAnimating = false;
+            }
+        });
+        timer.start();
+    }
+
+    private void animateToggleMaximize() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        Rectangle screen = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                                              .getMaximumWindowBounds();
+        Rectangle from, to;
         if (isMaximized) {
-            parentFrame.setExtendedState(JFrame.NORMAL);
-            parentFrame.setBounds(normalBounds);
-            isMaximized = false;
+            from = screen; to = normalBounds;
         } else {
             normalBounds = parentFrame.getBounds();
-            parentFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-            isMaximized = true;
+            from = normalBounds; to = screen;
+            try { parentFrame.setShape(null); } catch (UnsupportedOperationException ignored) {}
         }
-        parentFrame.revalidate();
-        parentFrame.repaint();
+
+        final Rectangle animFrom = from, animTo = to;
+        int[] step = {0};
+
+        Timer timer = new Timer(animDelayMs, null);
+        timer.addActionListener(e -> {
+            step[0]++;
+            float p = isMaximized
+                ? easeIn( (float) step[0] / animSteps)
+                : easeOut((float) step[0] / animSteps);
+
+            parentFrame.setBounds(
+                (int)(animFrom.x      + (animTo.x      - animFrom.x)      * p),
+                (int)(animFrom.y      + (animTo.y      - animFrom.y)      * p),
+                (int)(animFrom.width  + (animTo.width  - animFrom.width)  * p),
+                (int)(animFrom.height + (animTo.height - animFrom.height) * p)
+            );
+
+            if (step[0] >= animSteps) {
+                timer.stop();
+                parentFrame.setBounds(animTo);
+                isMaximized = !isMaximized;
+                isAnimating = false;
+                if (!isMaximized) {
+                    try {
+                        parentFrame.setShape(new RoundRectangle2D.Double(
+                            0, 0, animTo.width, animTo.height, 12, 12));
+                    } catch (UnsupportedOperationException ignored) {}
+                }
+                parentFrame.revalidate();
+                parentFrame.repaint();
+            }
+        });
+        timer.start();
     }
+
+    private float easeOut(float t) { return 1f - (1f - t) * (1f - t); }
+    private float easeIn(float t)  { return t * t; }
 
     // -------------------------
     // Dragging
@@ -193,17 +333,16 @@ public class CustomTitleBar extends JPanel {
     private void enableDragging() {
         addMouseListener(new MouseAdapter() {
             @Override public void mousePressed(MouseEvent e) {
-                if (isMaximized) return;
+                if (isMaximized || isAnimating) return;
                 dragStart = e.getPoint();
             }
             @Override public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) handleMaximize();
+                if (e.getClickCount() == 2) animateToggleMaximize();
             }
         });
-
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override public void mouseDragged(MouseEvent e) {
-                if (isMaximized) return;
+                if (isMaximized || isAnimating) return;
                 Point loc = parentFrame.getLocation();
                 parentFrame.setLocation(
                     loc.x + e.getX() - dragStart.x,

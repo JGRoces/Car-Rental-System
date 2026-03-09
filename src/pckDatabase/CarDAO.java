@@ -1,6 +1,5 @@
 package pckDatabase;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,18 +18,20 @@ import pckModels.Car;
  * Used by: CarService.java
  *
  * Table: cars
- *   car_id       INT AUTO_INCREMENT PK
- *   brand        VARCHAR(50)
- *   model        VARCHAR(50)
- *   year         YEAR
- *   plate_number VARCHAR(20) UNIQUE
- *   category     ENUM('Sedan','SUV','Van','Truck','Pickup','Coupe','Minivan')
- *   transmission ENUM('Automatic','Manual')
+ *   car_id        INT AUTO_INCREMENT PK
+ *   brand         VARCHAR(50)
+ *   model         VARCHAR(50)
+ *   year          YEAR
+ *   plate_number  VARCHAR(20) UNIQUE
+ *   category      ENUM('Sedan','SUV','Van','Truck','Pickup','Coupe','Minivan')
+ *   transmission  ENUM('Automatic','Manual','CVT')
+ *   fuel_type     ENUM('Gasoline','Diesel','Electric','Hybrid')
  *   seat_capacity INT
- *   daily_rate   DECIMAL(10,2)
- *   status       ENUM('AVAILABLE','RENTED','MAINTENANCE')
- *   image_path   VARCHAR(255)
- *   created_at   TIMESTAMP
+ *   daily_rate    DECIMAL(10,2)
+ *   status        ENUM('AVAILABLE','RENTED','MAINTENANCE')
+ *   image_path    VARCHAR(255)
+ *   color         VARCHAR(30)
+ *   created_at    TIMESTAMP
  */
 public class CarDAO {
 
@@ -46,10 +47,12 @@ public class CarDAO {
             rs.getString("plate_number"),
             rs.getString("category"),
             rs.getString("transmission"),
+            rs.getString("fuel_type"),
             rs.getInt("seat_capacity"),
             rs.getBigDecimal("daily_rate"),
             rs.getString("status"),
-            rs.getString("image_path")
+            rs.getString("image_path"),
+            rs.getString("color")
         );
     }
 
@@ -58,17 +61,15 @@ public class CarDAO {
     // ====================================================
     public List<Car> getAllCars() {
         List<Car> cars = new ArrayList<>();
-        String sql = "SELECT * FROM cars ORDER BY brand, model";
+        String sql = "SELECT * FROM cars";
 
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
                 cars.add(mapRow(rs));
             }
-            System.out.println("[CarDAO] getAllCars() → " + cars.size() + " rows");
-
         } catch (SQLException e) {
             System.err.println("[CarDAO] ERROR in getAllCars(): " + e.getMessage());
             e.printStackTrace();
@@ -199,8 +200,8 @@ public class CarDAO {
         String sql = """
             INSERT INTO cars
                 (brand, model, year, plate_number, category,
-                 transmission, seat_capacity, daily_rate, status, image_path)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 transmission, fuel_type, seat_capacity, daily_rate, status, image_path, color)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -211,11 +212,13 @@ public class CarDAO {
             ps.setInt(3,        car.getYear());
             ps.setString(4,     car.getPlateNumber());
             ps.setString(5,     car.getCategory());
-            ps.setString(6,     car.getTransmission());
-            ps.setInt(7,        car.getSeatCapacity());
-            ps.setBigDecimal(8, car.getDailyRate());
-            ps.setString(9,     car.getStatus());
-            ps.setString(10,    car.getImagePath());
+            ps.setString(6,      car.getTransmission());
+            ps.setString(7,      car.getFuelType());
+            ps.setInt(8,         car.getSeatCapacity());
+            ps.setBigDecimal(9,  car.getDailyRate());
+            ps.setString(10,     car.getStatus());
+            ps.setString(11,     car.getImagePath());
+            ps.setString(12,     car.getColor());
 
             int rows = ps.executeUpdate();
             if (rows > 0) {
@@ -248,10 +251,12 @@ public class CarDAO {
                 plate_number  = ?,
                 category      = ?,
                 transmission  = ?,
+                fuel_type     = ?,
                 seat_capacity = ?,
                 daily_rate    = ?,
                 status        = ?,
-                image_path    = ?
+                image_path    = ?,
+                color         = ?
             WHERE car_id = ?
             """;
 
@@ -263,12 +268,14 @@ public class CarDAO {
             ps.setInt(3,        car.getYear());
             ps.setString(4,     car.getPlateNumber());
             ps.setString(5,     car.getCategory());
-            ps.setString(6,     car.getTransmission());
-            ps.setInt(7,        car.getSeatCapacity());
-            ps.setBigDecimal(8, car.getDailyRate());
-            ps.setString(9,     car.getStatus());
-            ps.setString(10,    car.getImagePath());
-            ps.setInt(11,       car.getCarId());
+            ps.setString(6,      car.getTransmission());
+            ps.setString(7,      car.getFuelType());
+            ps.setInt(8,         car.getSeatCapacity());
+            ps.setBigDecimal(9,  car.getDailyRate());
+            ps.setString(10,     car.getStatus());
+            ps.setString(11,     car.getImagePath());
+            ps.setString(12,     car.getColor());
+            ps.setInt(13,        car.getCarId());
 
             int rows = ps.executeUpdate();
             System.out.println("[CarDAO] updateCar(id=" + car.getCarId() + ") → " + rows + " row(s) updated");
@@ -326,5 +333,27 @@ public class CarDAO {
             e.printStackTrace();
         }
         return false;
+    }
+
+    // ====================================================
+    //  READ — Get distinct brand names (for dynamic dropdown)
+    // ====================================================
+    public List<String> getDistinctBrands() {
+        List<String> brands = new ArrayList<>();
+        String sql = "SELECT DISTINCT brand FROM cars ORDER BY brand ASC";
+
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                brands.add(rs.getString("brand"));
+            }
+
+        } catch (SQLException e) {
+            System.err.println("[CarDAO] ERROR in getDistinctBrands(): " + e.getMessage());
+            e.printStackTrace();
+        }
+        return brands;
     }
 }
