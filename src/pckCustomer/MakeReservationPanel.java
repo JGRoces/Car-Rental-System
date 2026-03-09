@@ -32,9 +32,9 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.ScrollPaneConstants;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerDateModel;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
@@ -60,6 +60,15 @@ import pckUtils.SessionManager;
  *     avoid rendering as boxes; summary row height increased to 26px.
  */
 public class MakeReservationPanel extends JPanel {
+    // NOTE:
+    // This panel is already styled using the same design system as BrowseCarsGUI:
+    // - Same color palette (CLR_BG/CLR_WHITE/CLR_BLACK/CLR_GRAY/CLR_BORDER/CLR_BLUE/CLR_GREEN/CLR_RED/CLR_YELLOW)
+    // - Same typography (Segoe UI) and page header layout
+    // - Same card language (rounded cards, soft banners, subtle borders)
+    // If you want it to look EVEN closer to BrowseCarsGUI, next changes would be:
+    // 1) Add a BrowseCars-like header right action button (e.g., "Refresh Cars") in the page header row
+    // 2) Add a BrowseCars-like search bar (optional) for filtering the carCombo list
+    // 3) Use the same rounded search-field paint style for text inputs / combo boxes
 
     // ─────────────────────────────────────────────
     //  Colors
@@ -626,6 +635,26 @@ public class MakeReservationPanel extends JPanel {
     // ====================================================
     public void setRentalType(String type) {
         rentalTypeCombo.setSelectedItem(type);
+        refreshSummary();
+    }
+
+    /**
+     * Pre-selects a car in the reservation form.
+     * Called from BrowseCarsGUI when user clicks "Rent Now".
+     */
+    public void setSelectedCar(Car car) {
+        if (car == null) return;
+        
+        // Find the car's display name in the combo box
+        String displayName = car.getDisplayName();
+        for (int i = 0; i < carCombo.getItemCount(); i++) {
+            String item = carCombo.getItemAt(i);
+            if (item != null && item.equals(displayName)) {
+                carCombo.setSelectedIndex(i);
+                break;
+            }
+        }
+        updateCarDetails();
         refreshSummary();
     }
 
