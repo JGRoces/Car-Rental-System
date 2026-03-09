@@ -2,8 +2,6 @@ package pckMain;
 
 import javax.swing.SwingUtilities;
 
-import pckCustomer.CustomerDashboardGUI;
-
 /**
  * Main.java
  * Entry point of the Car Rental System application.
@@ -16,11 +14,8 @@ public class Main {
 
         // Always launch Swing GUIs on the Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
-            //LoginGUI loginWindow = new LoginGUI();
-            //loginWindow.setVisible(true);
-
-            CustomerDashboardGUI customerDashboardGUI = new CustomerDashboardGUI();
-            customerDashboardGUI.setVisible(true);
+            LoginGUI loginWindow = new LoginGUI();
+            loginWindow.setVisible(true);
         });
     }
 }
