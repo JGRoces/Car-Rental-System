@@ -1,6 +1,6 @@
 package pckCustomer;
 
-import pckUtils.UIAssets;
+
 
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -125,6 +125,14 @@ public class BrowseCarsGUI extends JPanel {
 
     public void setOnRentNow(Runnable r) {
         this.onRentNow = r;
+    }
+
+    /**
+     * Returns the currently selected car (when a user clicks on a car card).
+     * Used by CustomerDashboardGUI to pass the selected car to MakeReservationPanel.
+     */
+    public Car getSelectedCar() {
+        return selectedCar;
     }
 
     // ─────────────────────────────────────────────
@@ -329,15 +337,7 @@ public class BrowseCarsGUI extends JPanel {
         populateGrid(allCars);
 
         // Use a wrapper with proper opaque setting
-        JPanel wrapper = new JPanel(new BorderLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                // Fill with background color to prevent artifacts
-                g.setColor(CLR_BG);
-                g.fillRect(0, 0, getWidth(), getHeight());
-            }
-        };
+        JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(true);
         wrapper.setBackground(CLR_BG);
         wrapper.add(cardGrid, BorderLayout.NORTH);
@@ -352,7 +352,7 @@ public class BrowseCarsGUI extends JPanel {
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         
         // Disable double buffering for the viewport to prevent scrolling artifacts
-        scroll.getViewport().setScrollMode(JViewport.BACKINGSTORE_SCROLL_MODE);
+        scroll.getViewport().setScrollMode(JViewport.SIMPLE_SCROLL_MODE);
         
         return scroll;
     }
@@ -386,10 +386,15 @@ public class BrowseCarsGUI extends JPanel {
         JPanel card = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
+                // Clear the background first to prevent scroll ghosting
+                g.setColor(CLR_BG);
+                g.fillRect(0, 0, getWidth(), getHeight());
                 Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                // Drop shadow
                 g2.setColor(new Color(0, 0, 0, 18));
                 g2.fillRoundRect(3, 4, getWidth() - 4, getHeight() - 4, 20, 20);
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                // White card background (clip keeps children inside rounded corners)
                 g2.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 20, 20));
                 g2.setColor(CLR_WHITE);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
@@ -438,6 +443,10 @@ public class BrowseCarsGUI extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
+                // Always fill solid background first — prevents scroll ghosting
+                g2.setColor(new Color(235, 238, 245));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+
                 // Clip to rounded corners for the image/background only
                 g2.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 20, 20));
 
@@ -458,7 +467,7 @@ public class BrowseCarsGUI extends JPanel {
                 g2.dispose();
             }
         };
-        imgArea.setOpaque(false);
+        imgArea.setOpaque(true);
         imgArea.setPreferredSize(new Dimension(0, 140));
 
         if (cardImg == null) {
@@ -639,7 +648,7 @@ public class BrowseCarsGUI extends JPanel {
                 g2.dispose();
             }
         };
-        imgArea.setOpaque(false);
+        imgArea.setOpaque(true);
         imgArea.setPreferredSize(new Dimension(DETAIL_WIDTH, 180));
 
         if (detailImg == null) {
@@ -1122,42 +1131,44 @@ public class BrowseCarsGUI extends JPanel {
         chip.add(x);
         return chip;
     }
-        // ── Active filter chip ────────────────────────────────────
-        private void filterCards(String query) {
-                if (query.isBlank()) {
-                    populateGrid(allCars);
-                    return;
+    // ====================================================
+    //  SEARCH FILTER
+    // ====================================================
+    private void filterCards(String query) {
+        if (query.isBlank()) {
+            populateGrid(allCars);
+            return;
+        }
+
+        // Split into individual words so "Toyota Red" matches a red Toyota
+        String[] tokens = query.toLowerCase().trim().split("\\s+");
+
+        List<Car> filtered = allCars.stream()
+            .filter(c -> {
+                // Build a single searchable string from all visible card fields
+                String haystack = String.join(" ",
+                    c.getBrand(),
+                    c.getModel(),
+                    String.valueOf(c.getYear()),
+                    c.getCategory(),
+                    c.getTransmission(),
+                    c.getFuelType()  != null ? c.getFuelType()  : "",
+                    c.getColor()     != null ? c.getColor()     : "",
+                    String.valueOf(c.getSeatCapacity()),
+                    c.getDailyRate().toPlainString()
+                ).toLowerCase();
+
+                // Every token must appear somewhere in the haystack
+                for (String token : tokens) {
+                    if (!haystack.contains(token)) return false;
                 }
+                return true;
+            })
+            .toList();
 
-                // Split into individual words so "Toyota Red" matches a red Toyota
-                String[] tokens = query.toLowerCase().trim().split("\\s+");
-
-                List<Car> filtered = allCars.stream()
-                    .filter(c -> {
-                        // Build a single searchable string from all visible card fields
-                        String haystack = String.join(" ",
-                            c.getBrand(),
-                            c.getModel(),
-                            String.valueOf(c.getYear()),
-                            c.getCategory(),
-                            c.getTransmission(),
-                            c.getFuelType()     != null ? c.getFuelType()     : "",
-                            c.getColor()        != null ? c.getColor()        : "",
-                            String.valueOf(c.getSeatCapacity()),
-                            c.getDailyRate().toPlainString()
-                        ).toLowerCase();
-
-                        // Every token must appear somewhere in the haystack
-                        for (String token : tokens) {
-                            if (!haystack.contains(token)) return false;
-                        }
-                        return true;
-                    })
-                    .toList();
-
-                populateGrid(filtered);
-                closeDetailIfOpen();
-            }
+        populateGrid(filtered);
+        closeDetailIfOpen();
+    }
 
     private boolean matchesPriceRange(BigDecimal rate, String range) {
         double r = rate.doubleValue();

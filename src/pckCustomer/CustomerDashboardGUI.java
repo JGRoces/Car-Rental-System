@@ -105,7 +105,8 @@ public class CustomerDashboardGUI extends JFrame {
     private JPanel     contentArea;
     private CardLayout cardLayout;
     private JButton[]  navButtons;
-    private BrowseCarsGUI browseCarsPanel; 
+    private BrowseCarsGUI browseCarsPanel;
+    private MakeReservationPanel makeReservationPanel;
 
     // ─────────────────────────────────────────────
     //  Constructor
@@ -349,14 +350,29 @@ public class CustomerDashboardGUI extends JFrame {
         contentArea.setBackground(CLR_BG);
 
         browseCarsPanel = new BrowseCarsGUI();
+        makeReservationPanel = new MakeReservationPanel();
+        
         contentArea.add((JPanel) browseCarsPanel, PANEL_KEYS[0]);
-        contentArea.add(new MakeReservationPanel(), PANEL_KEYS[1]);
+        contentArea.add(makeReservationPanel, PANEL_KEYS[1]);
         contentArea.add(buildPlaceholderPanel("My Rentals",         "\uD83D\uDCCB"), PANEL_KEYS[2]);
         contentArea.add(buildPlaceholderPanel("Payment",            "\uD83D\uDCB3"), PANEL_KEYS[3]);
+
+        // Set up the callback for "Rent Now" button in BrowseCarsGUI
+        browseCarsPanel.setOnRentNow(() -> navigateToReservationWithCar(browseCarsPanel.getSelectedCar()));
 
         // Start on Browse Cars
         cardLayout.show(contentArea, PANEL_KEYS[0]);
         return contentArea;
+    }
+
+    /**
+     * Navigates to the Make Reservation panel with a pre-selected car.
+     */
+    private void navigateToReservationWithCar(pckModels.Car car) {
+        if (car != null) {
+            makeReservationPanel.setSelectedCar(car);
+        }
+        switchPanel(1); // Navigate to Make a Reservation
     }
 
     // ====================================================
