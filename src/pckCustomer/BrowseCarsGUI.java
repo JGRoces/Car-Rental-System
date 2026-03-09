@@ -1,5 +1,7 @@
 package pckCustomer;
 
+import pckUtils.UIAssets;
+
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -30,6 +32,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.JViewport;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
@@ -321,19 +324,36 @@ public class BrowseCarsGUI extends JPanel {
     private JScrollPane buildCardsArea() {
         cardGrid = new JPanel(new GridLayout(0, 5, 16, 16));
         cardGrid.setBackground(CLR_BG);
+        cardGrid.setOpaque(true);
         cardGrid.setBorder(new EmptyBorder(4, 0, 4, 0));
         populateGrid(allCars);
 
-        JPanel wrapper = new JPanel(new BorderLayout());
+        // Use a wrapper with proper opaque setting
+        JPanel wrapper = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                // Fill with background color to prevent artifacts
+                g.setColor(CLR_BG);
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        wrapper.setOpaque(true);
         wrapper.setBackground(CLR_BG);
         wrapper.add(cardGrid, BorderLayout.NORTH);
 
         JScrollPane scroll = new JScrollPane(wrapper);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.setViewportBorder(null);
+        scroll.getViewport().setOpaque(true);
         scroll.getViewport().setBackground(CLR_BG);
+        scroll.setOpaque(true);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        
+        // Disable double buffering for the viewport to prevent scrolling artifacts
+        scroll.getViewport().setScrollMode(JViewport.BACKINGSTORE_SCROLL_MODE);
+        
         return scroll;
     }
 
@@ -389,7 +409,8 @@ public class BrowseCarsGUI extends JPanel {
         };
         cardRef[0] = card;
 
-        card.setOpaque(false);
+        card.setOpaque(true);
+        card.setBackground(CLR_WHITE);
         card.setBorder(new EmptyBorder(4, 4, 6, 4));
         card.setPreferredSize(new Dimension(0, 280));
         card.setCursor(new Cursor(Cursor.HAND_CURSOR));
