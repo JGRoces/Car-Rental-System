@@ -62,6 +62,9 @@ public class CustomerDashboardGUI extends JFrame {
     private JButton[]            navButtons;
     private BrowseCarsGUI        browseCarsPanel;
     private MakeReservationPanel makeReservationPanel;
+    private JTable               myRentalsTable;
+    private DefaultTableModel    myRentalsModel;
+    private List<Rental>         myRentalsData = new java.util.ArrayList<>();
 
     public CustomerDashboardGUI() {
         initWindow();
@@ -284,6 +287,7 @@ public class CustomerDashboardGUI extends JFrame {
             public boolean isCellEditable(int r, int c) { return false; }
         };
         Customer customer = getLoggedInCustomer();
+        myRentalsData.clear();
         if (customer != null) {
             pckDatabase.CarDAO carDAO = new pckDatabase.CarDAO();
             pckDatabase.DriverDAO driverDAO = new pckDatabase.DriverDAO();
@@ -295,14 +299,16 @@ public class CustomerDashboardGUI extends JFrame {
                         ? java.util.Optional.ofNullable(driverDAO.getDriverById(r.getDriverId()))
                               .map(pckModels.Driver::getFullName).orElse("\u2014")
                         : "\u2014";
+                    myRentalsData.add(r);
                     model.addRow(new Object[]{ r.getRentalId(), carName,
                         r.getStartDate(), r.getEndDate(), driverName, r.getStatus() });
                 }
             }
         }
 
-        JTable table = buildStyledTable(model);
-        JScrollPane scroll = new JScrollPane(table);
+        myRentalsModel = model;
+        myRentalsTable = buildStyledTable(model);
+        JScrollPane scroll = new JScrollPane(myRentalsTable);
         scroll.setBorder(new LineBorder(new Color(220, 220, 220), 1, true));
 
         JPanel top = new JPanel(new BorderLayout());
@@ -393,125 +399,113 @@ public class CustomerDashboardGUI extends JFrame {
 
     // ── Modify Booking ────────────────────────────────────────
     private void showModifyBookingDialog() {
-        Customer customer = getLoggedInCustomer();
-        if (customer == null) { JOptionPane.showMessageDialog(this, "Please log in first."); return; }
+        if (myRentalsTable == null || myRentalsTable.getSelectedRow() < 0) {
+            JOptionPane.showMessageDialog(this, "Please select a booking from the table first.");
+            return;
+        }
+        int row = myRentalsTable.getSelectedRow();
+        if (row >= myRentalsData.size()) return;
+        Rental rental = myRentalsData.get(row);
 
+        // Validate eligibility
         java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().plusHours(24);
-
-        List<Rental> rentals = RentalService.getCustomerRentals(customer.getCustomerId())
-            .stream().filter(r -> {
-                if (r.getStatus().equals("PENDING")) return true;
-                if (r.getStatus().equals("ACTIVE"))
-                    return cutoff.isBefore(r.getStartDate().atStartOfDay());
-                return false;
-            }).toList();
-
-        if (rentals.isEmpty()) {
+        boolean eligible = rental.getStatus().equals("PENDING") ||
+            (rental.getStatus().equals("ACTIVE") &&
+             cutoff.isBefore(rental.getStartDate().atStartOfDay()));
+        if (!eligible) {
             JOptionPane.showMessageDialog(this,
-                "You have no modifiable bookings.\n"
+                "This booking cannot be modified.\n"
                 + "Active bookings can only be modified more than 24 hours before the start date.",
-                "Nothing to Modify", JOptionPane.INFORMATION_MESSAGE);
+                "Cannot Modify", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        JComboBox<String> rentalBox = new JComboBox<>();
-        for (Rental r : rentals)
-            rentalBox.addItem("Rental #" + r.getRentalId() + " \u2014 " + r.getStartDate() + " to " + r.getEndDate() + " [" + r.getStatus() + "]");
+        Customer customer = getLoggedInCustomer();
+        if (customer == null) { JOptionPane.showMessageDialog(this, "Please log in first."); return; }
+
         pckUtils.CalendarPicker newStart = new pckUtils.CalendarPicker();
         pckUtils.CalendarPicker newEnd   = new pckUtils.CalendarPicker();
         newStart.setPreferredSize(new java.awt.Dimension(160, 36));
         newEnd.setPreferredSize(new java.awt.Dimension(160, 36));
-        JPanel form = new JPanel(new GridLayout(3, 2, 8, 8));
+        JPanel form = new JPanel(new GridLayout(2, 2, 8, 8));
         form.setBorder(new EmptyBorder(8, 8, 8, 8));
-        form.setPreferredSize(new java.awt.Dimension(420, 120));
-        form.add(new JLabel("Select Booking:")); form.add(rentalBox);
+        form.setPreferredSize(new java.awt.Dimension(420, 90));
         form.add(new JLabel("New Start Date:")); form.add(newStart);
         form.add(new JLabel("New End Date:"));   form.add(newEnd);
 
-        if (JOptionPane.showConfirmDialog(this, form, "Modify Booking",
+        if (JOptionPane.showConfirmDialog(this, form,
+                "Modify Rental #" + rental.getRentalId(),
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
-            {
-                Rental selected = rentals.get(rentalBox.getSelectedIndex());
-                java.time.LocalDate start = newStart.getLocalDate();
-                java.time.LocalDate end   = newEnd.getLocalDate();
-                if (!end.isAfter(start)) { JOptionPane.showMessageDialog(this, "End date must be after start date."); return; }
-                boolean wasActive = selected.getStatus().equals("ACTIVE");
-                if (wasActive) {
-                    pckModels.Car car = new pckDatabase.CarDAO().getCarById(selected.getCarId());
-                    long days = java.time.temporal.ChronoUnit.DAYS.between(start, end);
-                    if (days <= 0) days = 1;
-                    java.math.BigDecimal newTotal = car != null
-                        ? car.getDailyRate().multiply(java.math.BigDecimal.valueOf(days))
-                        : selected.getTotalAmount();
-                    if (new pckDatabase.RentalDAO().updateDatesAndStatus(
-                            selected.getRentalId(), start, end, newTotal, "PENDING")) {
-                        JOptionPane.showMessageDialog(this,
-                            "Booking modified and returned to Pending for re-approval.");
-                        switchMyRentals("ACTIVE");
+            java.time.LocalDate start = newStart.getLocalDate();
+            java.time.LocalDate end   = newEnd.getLocalDate();
+            if (!end.isAfter(start)) { JOptionPane.showMessageDialog(this, "End date must be after start date."); return; }
+            boolean wasActive = rental.getStatus().equals("ACTIVE");
+            if (wasActive) {
+                pckModels.Car car = new pckDatabase.CarDAO().getCarById(rental.getCarId());
+                long days = java.time.temporal.ChronoUnit.DAYS.between(start, end);
+                if (days <= 0) days = 1;
+                java.math.BigDecimal newTotal = car != null
+                    ? car.getDailyRate().multiply(java.math.BigDecimal.valueOf(days))
+                    : rental.getTotalAmount();
+                if (new pckDatabase.RentalDAO().updateDatesAndStatus(
+                        rental.getRentalId(), start, end, newTotal, "PENDING")) {
+                    JOptionPane.showMessageDialog(this, "Booking modified and returned to Pending for re-approval.");
+                    switchMyRentals("ACTIVE");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to modify booking.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } else {
+                if (RentalService.cancelRental(rental.getRentalId())) {
+                    pckModels.Car car = new pckDatabase.CarDAO().getCarById(rental.getCarId());
+                    if (car != null && RentalService.bookRental(customer.getCustomerId(), car.getCarId(), start, end, car.getDailyRate())) {
+                        JOptionPane.showMessageDialog(this, "Booking modified successfully!");
+                        switchMyRentals("PENDING");
                     } else {
-                        JOptionPane.showMessageDialog(this, "Failed to modify booking.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(this, "Failed to rebook. Car may no longer be available.", "Error", JOptionPane.ERROR_MESSAGE);
                     }
                 } else {
-                    if (RentalService.cancelRental(selected.getRentalId())) {
-                        pckModels.Car car = new pckDatabase.CarDAO().getCarById(selected.getCarId());
-                        if (car != null && RentalService.bookRental(customer.getCustomerId(), car.getCarId(), start, end, car.getDailyRate())) {
-                            JOptionPane.showMessageDialog(this, "Booking modified successfully!");
-                            switchMyRentals("PENDING");
-                        } else {
-                            JOptionPane.showMessageDialog(this, "Failed to rebook. Car may no longer be available.", "Error", JOptionPane.ERROR_MESSAGE);
-                        }
-                    } else {
-                        JOptionPane.showMessageDialog(this, "Failed to modify booking.", "Error", JOptionPane.ERROR_MESSAGE);
-                    }
+                    JOptionPane.showMessageDialog(this, "Failed to modify booking.", "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         }
     }
+
 
     // ── Cancel Booking ────────────────────────────────────────
     private void showCancelBookingDialog() {
-        Customer customer = getLoggedInCustomer();
-        if (customer == null) { JOptionPane.showMessageDialog(this, "Please log in first."); return; }
+        if (myRentalsTable == null || myRentalsTable.getSelectedRow() < 0) {
+            JOptionPane.showMessageDialog(this, "Please select a booking from the table first.");
+            return;
+        }
+        int row = myRentalsTable.getSelectedRow();
+        if (row >= myRentalsData.size()) return;
+        Rental rental = myRentalsData.get(row);
 
+        // Validate eligibility
         java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().plusHours(24);
-
-        List<Rental> rentals = RentalService.getCustomerRentals(customer.getCustomerId())
-            .stream().filter(r -> {
-                if (r.getStatus().equals("PENDING")) return true;
-                if (r.getStatus().equals("ACTIVE"))
-                    return cutoff.isBefore(r.getStartDate().atStartOfDay());
-                return false;
-            }).toList();
-
-        if (rentals.isEmpty()) {
+        boolean eligible = rental.getStatus().equals("PENDING") ||
+            (rental.getStatus().equals("ACTIVE") &&
+             cutoff.isBefore(rental.getStartDate().atStartOfDay()));
+        if (!eligible) {
             JOptionPane.showMessageDialog(this,
-                "You have no cancellable bookings.\n"
+                "This booking cannot be cancelled.\n"
                 + "Active bookings can only be cancelled more than 24 hours before the start date.",
-                "Nothing to Cancel", JOptionPane.INFORMATION_MESSAGE);
+                "Cannot Cancel", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        JComboBox<String> rentalBox = new JComboBox<>();
-        for (Rental r : rentals)
-            rentalBox.addItem("Rental #" + r.getRentalId() + " \u2014 " + r.getStartDate() + " to " + r.getEndDate() + " [" + r.getStatus() + "]");
-        JPanel form = new JPanel(new GridLayout(1, 2, 8, 8));
-        form.setBorder(new EmptyBorder(8, 8, 8, 8));
-        form.add(new JLabel("Select Booking:")); form.add(rentalBox);
-
-        if (JOptionPane.showConfirmDialog(this, form, "Cancel Booking",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
-            Rental selected = rentals.get(rentalBox.getSelectedIndex());
-            if (JOptionPane.showConfirmDialog(this, "Cancel Rental #" + selected.getRentalId() + "? This cannot be undone.",
-                    "Confirm", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-                if (RentalService.cancelRental(selected.getRentalId())) {
-                    JOptionPane.showMessageDialog(this, "Booking cancelled successfully.");
-                    switchMyRentals("ACTIVE");
-                } else {
-                    JOptionPane.showMessageDialog(this, "Failed to cancel booking.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
+        if (JOptionPane.showConfirmDialog(this,
+                "Cancel Rental #" + rental.getRentalId() + "? This cannot be undone.",
+                "Confirm Cancel", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+            if (RentalService.cancelRental(rental.getRentalId())) {
+                JOptionPane.showMessageDialog(this, "Booking cancelled successfully.");
+                switchMyRentals(rental.getStatus().equals("PENDING") ? "PENDING" : "ACTIVE");
+            } else {
+                JOptionPane.showMessageDialog(this, "Failed to cancel booking.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
+
 
     // ── Logout ────────────────────────────────────────────────
     private void handleLogout() {
