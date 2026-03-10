@@ -31,7 +31,21 @@ import javax.swing.border.EmptyBorder;
 
 import pckMain.LoginGUI;
 import pckServices.AuthService;
+import pckServices.RentalService;
 import pckUtils.SessionManager;
+import pckDatabase.CustomerDAO;
+import pckModels.Customer;
+import pckModels.Rental;
+import pckModels.Payment;
+
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JComboBox;
+import javax.swing.JTextField;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.border.MatteBorder;
+import javax.swing.border.LineBorder;
+import java.util.List;
 
 /**
  * CustomerDashboardGUI.java
@@ -231,8 +245,8 @@ public class CustomerDashboardGUI extends JFrame {
 
         contentArea.add((JPanel) browseCarsPanel,  PANEL_KEYS[0]);
         contentArea.add(makeReservationPanel,       PANEL_KEYS[1]);
-        contentArea.add(buildPlaceholderPanel("My Rentals", "\uD83D\uDCCB"), PANEL_KEYS[2]);
-        contentArea.add(buildPlaceholderPanel("Payment",    "\uD83D\uDCB3"), PANEL_KEYS[3]);
+        contentArea.add(buildMyRentalsPanel(),      PANEL_KEYS[2]);
+        contentArea.add(buildPaymentPanel(),        PANEL_KEYS[3]);
 
         browseCarsPanel.setOnRentNow(() -> navigateToReservationWithCar(browseCarsPanel.getSelectedCar()));
 
@@ -284,6 +298,14 @@ public class CustomerDashboardGUI extends JFrame {
     //  SWITCH PANEL
     // ====================================================
     private void switchPanel(int index) {
+        // Rebuild My Rentals and Payment panels fresh each time to get latest data
+        if (index == 2) {
+            contentArea.remove(2);
+            contentArea.add(buildMyRentalsPanel(null), PANEL_KEYS[2], 2);
+        } else if (index == 3) {
+            contentArea.remove(3);
+            contentArea.add(buildPaymentPanel(), PANEL_KEYS[3], 3);
+        }
         for (int i = 0; i < navButtons.length; i++) {
             boolean active = (i == index);
             navButtons[i].setBackground(UIAssets.CLR_CHROME);
@@ -294,6 +316,272 @@ public class CustomerDashboardGUI extends JFrame {
             }
         }
         cardLayout.show(contentArea, PANEL_KEYS[index]);
+    }
+
+    // ====================================================
+    //  MY RENTALS PANEL
+    // ====================================================
+    private JPanel buildMyRentalsPanel() {
+        return buildMyRentalsPanel(null);
+    }
+
+    private JPanel buildMyRentalsPanel(String statusFilter) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(UIAssets.getBg());
+        panel.setBorder(new EmptyBorder(28, 32, 28, 32));
+
+        String subtitle = statusFilter != null
+            ? "Showing: " + statusFilter
+            : "View your rental history and current bookings.";
+        JLabel title = new JLabel("My Rentals");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        title.setForeground(UIAssets.getTextPrimary());
+        title.setBorder(new EmptyBorder(0, 0, 6, 0));
+        JLabel sub = new JLabel(subtitle);
+        sub.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        sub.setForeground(UIAssets.getTextSecondary());
+        JPanel header = new JPanel(new GridLayout(2, 1, 0, 4));
+        header.setOpaque(false);
+        header.setBorder(new EmptyBorder(0, 0, 20, 0));
+        header.add(title); header.add(sub);
+
+        // Filter buttons row
+        JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        filterRow.setOpaque(false);
+        filterRow.setBorder(new EmptyBorder(0, 0, 12, 0));
+        String[] filters = { "All", "PENDING", "ACTIVE", "COMPLETED", "CANCELLED" };
+        String[] labels  = { "All", "Pending", "Active", "Completed", "Cancelled" };
+        for (int i = 0; i < filters.length; i++) {
+            final String f = filters[i];
+            boolean active = (statusFilter == null && f.equals("All")) ||
+                             (f.equals(statusFilter));
+            JButton btn = new JButton(labels[i]);
+            btn.setFont(active ? UIAssets.FONT_NAV_BOLD : UIAssets.FONT_NAV);
+            btn.setForeground(active ? Color.WHITE : UIAssets.getTextPrimary());
+            btn.setBackground(active ? UIAssets.CLR_BLUE : new Color(220, 220, 220));
+            btn.setBorderPainted(false); btn.setFocusPainted(false);
+            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            btn.addActionListener(e -> switchMyRentals(f.equals("All") ? null : f));
+            filterRow.add(btn);
+        }
+
+        String[] cols = { "Rental ID", "Car ID", "Start Date", "End Date", "Total", "Status" };
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        Customer customer = getLoggedInCustomer();
+        if (customer != null) {
+            List<Rental> rentals = RentalService.getCustomerRentals(customer.getCustomerId());
+            for (Rental r : rentals) {
+                if (statusFilter == null || r.getStatus().equalsIgnoreCase(statusFilter)) {
+                    model.addRow(new Object[]{ r.getRentalId(), r.getCarId(),
+                        r.getStartDate(), r.getEndDate(),
+                        "\u20b1" + String.format("%,.2f", r.getTotalAmount()), r.getStatus() });
+                }
+            }
+        }
+
+        JTable table = new JTable(model);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        table.setRowHeight(38);
+        table.setBackground(Color.WHITE);
+        table.setForeground(UIAssets.getTextPrimary());
+        table.setGridColor(new Color(220, 220, 220));
+        table.setShowVerticalLines(false);
+        table.setFillsViewportHeight(true);
+        table.setSelectionBackground(UIAssets.CLR_BLUE_LIGHT);
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        table.getTableHeader().setBackground(UIAssets.getBg());
+        table.getTableHeader().setForeground(UIAssets.getTextSecondary());
+        table.getTableHeader().setBorder(new MatteBorder(0, 0, 1, 0, new Color(220, 220, 220)));
+        table.getTableHeader().setReorderingAllowed(false);
+
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(new LineBorder(new Color(220, 220, 220), 1, true));
+
+        JPanel top = new JPanel(new BorderLayout());
+        top.setOpaque(false);
+        top.add(header,    BorderLayout.NORTH);
+        top.add(filterRow, BorderLayout.SOUTH);
+
+        panel.add(top,    BorderLayout.NORTH);
+        panel.add(scroll, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private void switchMyRentals(String statusFilter) {
+        contentArea.remove(2);
+        contentArea.add(buildMyRentalsPanel(statusFilter), PANEL_KEYS[2], 2);
+        cardLayout.show(contentArea, PANEL_KEYS[2]);
+    }
+
+    // ====================================================
+    //  PAYMENT PANEL
+    // ====================================================
+    private JPanel buildPaymentPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(UIAssets.getBg());
+        panel.setBorder(new EmptyBorder(28, 32, 28, 32));
+
+        JLabel title = new JLabel("Payment");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        title.setForeground(UIAssets.getTextPrimary());
+        title.setBorder(new EmptyBorder(0, 0, 6, 0));
+        JLabel sub = new JLabel("View your payment history and pending transactions.");
+        sub.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        sub.setForeground(UIAssets.getTextSecondary());
+        JPanel header = new JPanel(new GridLayout(2, 1, 0, 4));
+        header.setOpaque(false);
+        header.setBorder(new EmptyBorder(0, 0, 20, 0));
+        header.add(title); header.add(sub);
+
+        String[] cols = { "Payment ID", "Rental ID", "Amount", "Date", "Method", "Status" };
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        Customer customer = getLoggedInCustomer();
+        if (customer != null) {
+            for (Rental r : RentalService.getCustomerRentals(customer.getCustomerId())) {
+                for (Payment p : RentalService.getAllPayments()) {
+                    if (p.getRentalId() == r.getRentalId()) {
+                        model.addRow(new Object[]{ p.getPaymentId(), p.getRentalId(),
+                            "\u20b1" + String.format("%,.2f", p.getAmountPaid()),
+                            p.getPaymentDate() != null ? p.getPaymentDate().toLocalDate() : "\u2014",
+                            p.getPaymentMethod(), p.getStatus() });
+                    }
+                }
+            }
+        }
+
+        JTable table = new JTable(model);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        table.setRowHeight(38);
+        table.setBackground(Color.WHITE);
+        table.setForeground(UIAssets.getTextPrimary());
+        table.setGridColor(new Color(220, 220, 220));
+        table.setShowVerticalLines(false);
+        table.setFillsViewportHeight(true);
+        table.setSelectionBackground(UIAssets.CLR_BLUE_LIGHT);
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        table.getTableHeader().setBackground(UIAssets.getBg());
+        table.getTableHeader().setForeground(UIAssets.getTextSecondary());
+        table.getTableHeader().setBorder(new MatteBorder(0, 0, 1, 0, new Color(220, 220, 220)));
+        table.getTableHeader().setReorderingAllowed(false);
+
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(new LineBorder(new Color(220, 220, 220), 1, true));
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(scroll,  BorderLayout.CENTER);
+        return panel;
+    }
+
+    private Customer getLoggedInCustomer() {
+        if (!SessionManager.isLoggedIn()) return null;
+        CustomerDAO dao = new CustomerDAO();
+        return dao.getCustomerByUserId(SessionManager.getCurrentUser().getUserId());
+    }
+
+    // ====================================================
+    //  MODIFY BOOKING DIALOG
+    // ====================================================
+    private void showModifyBookingDialog() {
+        Customer customer = getLoggedInCustomer();
+        if (customer == null) { JOptionPane.showMessageDialog(this, "Please log in first."); return; }
+
+        List<Rental> rentals = RentalService.getCustomerRentals(customer.getCustomerId())
+            .stream().filter(r -> r.getStatus().equals("PENDING")).toList();
+
+        if (rentals.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "You have no pending bookings to modify.");
+            return;
+        }
+
+        JComboBox<String> rentalBox = new JComboBox<>();
+        for (Rental r : rentals)
+            rentalBox.addItem("Rental #" + r.getRentalId() + " — Car ID " + r.getCarId()
+                + " | " + r.getStartDate() + " to " + r.getEndDate());
+
+        JTextField newStart = new JTextField("YYYY-MM-DD");
+        JTextField newEnd   = new JTextField("YYYY-MM-DD");
+
+        JPanel form = new JPanel(new GridLayout(3, 2, 8, 8));
+        form.setBorder(new EmptyBorder(8, 8, 8, 8));
+        form.add(new JLabel("Select Booking:")); form.add(rentalBox);
+        form.add(new JLabel("New Start Date:")); form.add(newStart);
+        form.add(new JLabel("New End Date:"));   form.add(newEnd);
+
+        if (JOptionPane.showConfirmDialog(this, form, "Modify Booking",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
+            try {
+                int idx = rentalBox.getSelectedIndex();
+                Rental selected = rentals.get(idx);
+                java.time.LocalDate start = java.time.LocalDate.parse(newStart.getText().trim());
+                java.time.LocalDate end   = java.time.LocalDate.parse(newEnd.getText().trim());
+                if (!end.isAfter(start)) {
+                    JOptionPane.showMessageDialog(this, "End date must be after start date."); return;
+                }
+                // Cancel old rental and create a new one with updated dates
+                if (RentalService.cancelRental(selected.getRentalId())) {
+                    pckDatabase.CarDAO carDAO = new pckDatabase.CarDAO();
+                    pckModels.Car car = carDAO.getCarById(selected.getCarId());
+                    if (car != null && RentalService.bookRental(
+                            customer.getCustomerId(), car.getCarId(),
+                            start, end, car.getDailyRate())) {
+                        JOptionPane.showMessageDialog(this, "Booking modified successfully!");
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Failed to rebook. Car may no longer be available.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to modify booking.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Invalid date format. Use YYYY-MM-DD.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    // ====================================================
+    //  CANCEL BOOKING DIALOG
+    // ====================================================
+    private void showCancelBookingDialog() {
+        Customer customer = getLoggedInCustomer();
+        if (customer == null) { JOptionPane.showMessageDialog(this, "Please log in first."); return; }
+
+        List<Rental> rentals = RentalService.getCustomerRentals(customer.getCustomerId())
+            .stream().filter(r -> r.getStatus().equals("PENDING") || r.getStatus().equals("ACTIVE")).toList();
+
+        if (rentals.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "You have no active or pending bookings to cancel.");
+            return;
+        }
+
+        JComboBox<String> rentalBox = new JComboBox<>();
+        for (Rental r : rentals)
+            rentalBox.addItem("Rental #" + r.getRentalId() + " — Car ID " + r.getCarId()
+                + " | " + r.getStartDate() + " to " + r.getEndDate() + " [" + r.getStatus() + "]");
+
+        JPanel form = new JPanel(new GridLayout(1, 2, 8, 8));
+        form.setBorder(new EmptyBorder(8, 8, 8, 8));
+        form.add(new JLabel("Select Booking:")); form.add(rentalBox);
+
+        if (JOptionPane.showConfirmDialog(this, form, "Cancel Booking",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
+            int idx = rentalBox.getSelectedIndex();
+            Rental selected = rentals.get(idx);
+            int confirm = JOptionPane.showConfirmDialog(this,
+                "Cancel Rental #" + selected.getRentalId() + "? This cannot be undone.",
+                "Confirm Cancellation", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                if (RentalService.cancelRental(selected.getRentalId())) {
+                    JOptionPane.showMessageDialog(this, "Booking cancelled successfully.");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to cancel booking.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }
     }
 
     // ====================================================
@@ -410,7 +698,7 @@ public class CustomerDashboardGUI extends JFrame {
                     public void mousePressed(MouseEvent e) {
                         dropdown.dispose();
                         activeDropdown = null;
-                        applyBrowseFilter(colCategory, value);
+                        javax.swing.SwingUtilities.invokeLater(() -> applyBrowseFilter(colCategory, value));
                     }
                 });
                 colPanel.add(itemRow);
@@ -471,13 +759,42 @@ public class CustomerDashboardGUI extends JFrame {
     //  BROWSE CARS FILTER DISPATCHER
     // ====================================================
     private void applyBrowseFilter(String category, String value) {
-        switchPanel(0);
         switch (category) {
-            case "By Type"      -> browseCarsPanel.filterByType(value);
-            case "By Brand"     -> browseCarsPanel.filterByBrand(value);
-            case "By Price"     -> browseCarsPanel.filterByPriceRange(value);
-            case "Transmission" -> browseCarsPanel.filterByTransmission(value);
-            case "Fuel Type"    -> browseCarsPanel.filterByFuelType(value);
+            // Browse Cars filters
+            case "By Type"      -> { switchPanel(0); browseCarsPanel.filterByType(value);         }
+            case "By Brand"     -> { switchPanel(0); browseCarsPanel.filterByBrand(value);        }
+            case "By Price"     -> { switchPanel(0); browseCarsPanel.filterByPriceRange(value);   }
+            case "Transmission" -> { switchPanel(0); browseCarsPanel.filterByTransmission(value); }
+            case "Fuel Type"    -> { switchPanel(0); browseCarsPanel.filterByFuelType(value);     }
+            // Make a Reservation actions
+            case "Rental" -> {
+                if (value.equals("New Reservation")) {
+                    switchPanel(1);
+                } else if (value.equals("Modify Booking")) {
+                    showModifyBookingDialog();
+                } else if (value.equals("Cancel Booking")) {
+                    showCancelBookingDialog();
+                }
+            }
+            case "Options" -> {
+                switchPanel(1);
+                makeReservationPanel.setRentalType(
+                    value.equals("Per Hour") ? "Per Hour" : "Per Day");
+            }
+            // My Rentals actions
+            case "Status" -> {
+                String filter = switch (value) {
+                    case "Active Rentals"   -> "ACTIVE";
+                    case "Pending Approval" -> "PENDING";
+                    case "Completed"        -> "COMPLETED";
+                    case "Cancelled"        -> "CANCELLED";
+                    default                 -> null;
+                };
+                switchMyRentals(filter);
+            }
+            case "Actions" -> switchPanel(2);
+            // Payment actions
+            case "Transactions", "Methods" -> switchPanel(3);
         }
     }
 }

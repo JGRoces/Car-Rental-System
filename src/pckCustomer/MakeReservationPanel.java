@@ -702,17 +702,47 @@ public class MakeReservationPanel extends JPanel {
     //  SUBMIT
     // ====================================================
     private void submitReservation() {
-        // TODO: wire to RentalDAO.insertRental()
         String name = SessionManager.isLoggedIn()
             ? SessionManager.getCurrentUser().getFullName() : "Customer";
-        JOptionPane.showMessageDialog(this,
-            "<html><b>Reservation submitted!</b><br><br>"
-            + "Hi <b>" + name + "</b>, your booking is <b>Pending Approval</b>.<br>"
-            + "An admin will review your request shortly.<br><br>"
-            + "<b>Total: " + computeTotal() + "</b></html>",
-            "Reservation Submitted", JOptionPane.INFORMATION_MESSAGE);
-        clearForm();
-        stepLayout.show(stepContainer, STEP_FORM);
+
+        int idx = carCombo.getSelectedIndex();
+        if (idx <= 0 || idx - 1 >= availableCars.size()) {
+            showError("Please select a car."); return;
+        }
+        Car selectedCar = availableCars.get(idx - 1);
+
+        java.time.LocalDate start = ((java.util.Date) pickupDateSpinner.getValue())
+            .toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+        java.time.LocalDate end = ((java.util.Date) returnDateSpinner.getValue())
+            .toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+
+        pckDatabase.CustomerDAO customerDAO = new pckDatabase.CustomerDAO();
+        pckModels.Customer customer = customerDAO.getCustomerByUserId(
+            SessionManager.getCurrentUser().getUserId());
+        if (customer == null) {
+            showError("Customer profile not found. Please contact admin."); return;
+        }
+
+        boolean ok = pckServices.RentalService.bookRental(
+            customer.getCustomerId(), selectedCar.getCarId(),
+            start, end, selectedCar.getDailyRate());
+
+        if (ok) {
+            JOptionPane.showMessageDialog(this,
+                "<html><b>Reservation submitted!</b><br><br>"
+                + "Hi <b>" + name + "</b>, your booking is <b>Pending Approval</b>.<br>"
+                + "An admin will review your request shortly.<br><br>"
+                + "<b>Total: " + computeTotal() + "</b></html>",
+                "Reservation Submitted", JOptionPane.INFORMATION_MESSAGE);
+            availableCars = carDAO.getAvailableCars();
+            carCombo.removeAllItems();
+            carCombo.addItem("\u2014 Select a Car \u2014");
+            for (Car car : availableCars) carCombo.addItem(car.getDisplayName());
+            clearForm();
+            stepLayout.show(stepContainer, STEP_FORM);
+        } else {
+            showError("Failed to submit reservation. The car may no longer be available.");
+        }
     }
 
     // ====================================================
