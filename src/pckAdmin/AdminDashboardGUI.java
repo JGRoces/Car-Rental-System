@@ -244,14 +244,19 @@ public class AdminDashboardGUI extends JFrame {
         // Sign Out — red foreground, same nav button shape
         // setForeground() directly on the button — no child JLabel lookup needed
         signOutBtn = buildNavButton("Sign Out", AppConfig.ICON_NAV_SIGNOUT, false);
+        // Override all Sign Out colors to red variants — never blue
         signOutBtn.setForeground(UIAssets.CLR_RED);
-        // Override inactive icon to red — Sign Out is always red when not hovered
-        ImageIcon redIcon = AdminUIHelper.loadIcon(
-            AppConfig.ICON_NAV_SIGNOUT, UIAssets.CLR_RED, NAV_ICON_SIZE);
-        if (redIcon != null) {
-            signOutBtn.setIcon(redIcon);
-            signOutBtn.putClientProperty("icon.inactive", redIcon);
-        }
+        signOutBtn.putClientProperty("restoreFg", UIAssets.CLR_RED);
+        signOutBtn.putClientProperty("hoverBg",   UIAssets.CLR_RED_LIGHT);
+        signOutBtn.putClientProperty("hoverFg",   UIAssets.CLR_RED);
+        // Red inactive icon + red hover icon — both tinted from the same PNG
+        ImageIcon redIcon      = AdminUIHelper.loadIcon(
+            AppConfig.ICON_NAV_SIGNOUT, UIAssets.CLR_RED,       NAV_ICON_SIZE);
+        ImageIcon redHoverIcon = AdminUIHelper.loadIcon(
+            AppConfig.ICON_NAV_SIGNOUT, UIAssets.CLR_RED.darker(), NAV_ICON_SIZE);
+        if (redIcon      != null) { signOutBtn.setIcon(redIcon);
+                                    signOutBtn.putClientProperty("icon.inactive", redIcon); }
+        if (redHoverIcon != null) { signOutBtn.putClientProperty("icon.hover",    redHoverIcon); }
         signOutBtn.addActionListener(e -> handleSignOut());
         sidebar.add(signOutBtn);
 
@@ -259,12 +264,25 @@ public class AdminDashboardGUI extends JFrame {
     }
 
     private JButton buildToggleButton() {
-        // RIGHT-aligned in the sidebar — sits in a full-width wrapper panel
-        // so BoxLayout respects the right edge. Text is right-aligned with
-        // 14px right padding, matching the sidebar's right border gap.
-        JButton btn = new JButton("<");
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btn.setForeground(UIAssets.getTextSecondary());
+        // PNG icon version — sidebar-close.png shown when expanded (click to collapse),
+        // sidebar-open.png shown when collapsed (click to expand).
+        // Icons tinted to getTextSecondary(), blue on hover.
+        // Stored as client properties for instant swap in toggleSidebar().
+        ImageIcon closeIcon      = AdminUIHelper.loadIcon(
+            AppConfig.ICON_NAV_SIDEBAR_CLOSE, UIAssets.getTextSecondary(), NAV_ICON_SIZE);
+        ImageIcon openIcon       = AdminUIHelper.loadIcon(
+            AppConfig.ICON_NAV_SIDEBAR_OPEN,  UIAssets.getTextSecondary(), NAV_ICON_SIZE);
+        ImageIcon closeIconHover = AdminUIHelper.loadIcon(
+            AppConfig.ICON_NAV_SIDEBAR_CLOSE, UIAssets.CLR_BLUE,           NAV_ICON_SIZE);
+        ImageIcon openIconHover  = AdminUIHelper.loadIcon(
+            AppConfig.ICON_NAV_SIDEBAR_OPEN,  UIAssets.CLR_BLUE,           NAV_ICON_SIZE);
+
+        JButton btn = new JButton(closeIcon); // starts expanded → show close icon
+        btn.putClientProperty("icon.close",       closeIcon);
+        btn.putClientProperty("icon.open",        openIcon);
+        btn.putClientProperty("icon.close.hover", closeIconHover);
+        btn.putClientProperty("icon.open.hover",  openIconHover);
+
         btn.setHorizontalAlignment(SwingConstants.RIGHT);
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
@@ -273,8 +291,16 @@ public class AdminDashboardGUI extends JFrame {
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
         btn.setBorder(new EmptyBorder(0, 12, 0, 14));
         btn.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { btn.setForeground(UIAssets.CLR_BLUE); }
-            @Override public void mouseExited(MouseEvent e)  { btn.setForeground(UIAssets.getTextSecondary()); }
+            @Override public void mouseEntered(MouseEvent e) {
+                String key = sidebarExpanded ? "icon.close.hover" : "icon.open.hover";
+                Object ico = btn.getClientProperty(key);
+                if (ico instanceof ImageIcon i) btn.setIcon(i);
+            }
+            @Override public void mouseExited(MouseEvent e) {
+                String key = sidebarExpanded ? "icon.close" : "icon.open";
+                Object ico = btn.getClientProperty(key);
+                if (ico instanceof ImageIcon i) btn.setIcon(i);
+            }
         });
         btn.addActionListener(e -> toggleSidebar());
         return btn;
@@ -339,17 +365,27 @@ public class AdminDashboardGUI extends JFrame {
         btn.setBorderPainted(false);
         btn.setContentAreaFilled(false);
         btn.setFocusPainted(false);
-        btn.setBorder(new EmptyBorder(0, 20, 0, 12));
+        // Equal left/right padding — symmetric sidebar items
+        btn.setBorder(new EmptyBorder(0, 14, 0, 14));
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
         btn.setPreferredSize(new Dimension(SIDEBAR_W_EXPANDED, 44));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        // Store per-button hover/restore colors so Sign Out uses red hover
+        // while all other items use blue hover — no hardcoded color in listener.
+        // These are set to blue defaults here; Sign Out overrides them after build.
+        btn.putClientProperty("hoverBg",   UIAssets.CLR_BLUE_LIGHT);
+        btn.putClientProperty("hoverFg",   UIAssets.CLR_BLUE);
+        btn.putClientProperty("restoreFg", btn.getForeground());
+
         btn.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) {
                 if (!btn.getBackground().equals(UIAssets.CLR_BLUE)) {
-                    btn.setBackground(UIAssets.CLR_BLUE_LIGHT);
-                    btn.setForeground(UIAssets.CLR_BLUE);
+                    Object hBg = btn.getClientProperty("hoverBg");
+                    Object hFg = btn.getClientProperty("hoverFg");
+                    btn.setBackground(hBg instanceof Color c ? c : UIAssets.CLR_BLUE_LIGHT);
+                    btn.setForeground(hFg instanceof Color c ? c : UIAssets.CLR_BLUE);
                     Object ico = btn.getClientProperty("icon.hover");
                     if (ico instanceof ImageIcon i) btn.setIcon(i);
                 }
@@ -357,7 +393,8 @@ public class AdminDashboardGUI extends JFrame {
             @Override public void mouseExited(MouseEvent e) {
                 if (!btn.getBackground().equals(UIAssets.CLR_BLUE)) {
                     btn.setBackground(UIAssets.getSurface());
-                    btn.setForeground(UIAssets.getTextSecondary());
+                    Object rFg = btn.getClientProperty("restoreFg");
+                    btn.setForeground(rFg instanceof Color c ? c : UIAssets.getTextSecondary());
                     Object ico = btn.getClientProperty("icon.inactive");
                     if (ico instanceof ImageIcon i) btn.setIcon(i);
                 }
@@ -382,8 +419,10 @@ public class AdminDashboardGUI extends JFrame {
         int w = sidebarExpanded ? SIDEBAR_W_EXPANDED : SIDEBAR_W_COLLAPSED;
         sidebar.setPreferredSize(new Dimension(w, 0));
 
-        // Toggle button chevron direction
-        toggleBtn.setText(sidebarExpanded ? "<" : ">");
+        // Swap toggle icon: expanded → show close icon, collapsed → show open icon
+        String toggleKey = sidebarExpanded ? "icon.close" : "icon.open";
+        Object toggleIco = toggleBtn.getClientProperty(toggleKey);
+        if (toggleIco instanceof ImageIcon i) toggleBtn.setIcon(i);
 
         // Expanded: icon LEFT + text RIGHT, left-aligned.
         // Collapsed: text hidden, icon centered — icon becomes the visual hint.
@@ -536,13 +575,9 @@ public class AdminDashboardGUI extends JFrame {
         if (signOutBtn != null) {
             signOutBtn.setBackground(UIAssets.getSurface());
             signOutBtn.setForeground(UIAssets.CLR_RED);
-            Object ico = signOutBtn.getClientProperty("icon.inactive");
-            if (ico instanceof ImageIcon) {
-                // Re-tint sign-out icon to red (theme may have changed secondary color)
-                ImageIcon redIcon = AdminUIHelper.loadIcon(
-                    AppConfig.ICON_NAV_SIGNOUT, UIAssets.CLR_RED, NAV_ICON_SIZE);
-                if (redIcon != null) signOutBtn.setIcon(redIcon);
-            }
+            signOutBtn.putClientProperty("restoreFg", UIAssets.CLR_RED);
+            signOutBtn.putClientProperty("hoverBg",   UIAssets.CLR_RED_LIGHT);
+            signOutBtn.putClientProperty("hoverFg",   UIAssets.CLR_RED);
         }
 
         repaint();

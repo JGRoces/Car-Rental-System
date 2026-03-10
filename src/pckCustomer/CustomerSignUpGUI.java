@@ -24,7 +24,7 @@ import java.io.File;
 public class CustomerSignUpGUI extends JFrame {
 
     private static final String PLACEHOLDER_PHOTO =
-        "assets/test-images/profile photos/phpfp.png";
+        "assets/defaults/default-avatar.png";
 
     private final JFrame parent;
 

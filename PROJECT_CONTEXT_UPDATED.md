@@ -30,72 +30,109 @@ The system has **two actors:**
 
 ```
 CAR-RENTAL-SYSTEM/
+│
 ├── assets/
 │   ├── images/
-│   │   ├── login-car.png        // LoginGUI left panel image (to be added)
-│   │   ├── logo.png
-│   │   └── default-avatar.png
-│   └── icons/
-│       ├── dashboard.png
-│       ├── car.png
-│       ├── customer.png
-│       ├── rental.png
-│       ├── reports.png
-│       └── logout.png
+│   │   ├── bydshowcase.jpg
+│   │   └── logo.png
+│   ├── icons/
+│   │   ├── nav/
+│   │   │   ├── overview.png
+│   │   │   ├── management.png
+│   │   │   ├── payments.png
+│   │   │   ├── reports.png
+│   │   │   ├── account.png
+│   │   │   ├── settings.png
+│   │   │   ├── signout.png
+│   │   │   ├── sidebar-close.png          ← new
+│   │   │   └── sidebar-open.png           ← new
+│   │   └── action/
+│   │       ├── add.png
+│   │       ├── edit.png
+│   │       ├── delete.png
+│   │       ├── verify.png
+│   │       ├── reject.png
+│   │       ├── search.png
+│   │       ├── filter.png
+│   │       ├── refresh.png
+│   │       ├── export.png
+│   │       ├── upload.png
+│   │       ├── calendar.png
+│   │       └── car.png
+│   └── defaults/
+│       ├── default-avatar.png
+│       └── default-vehicle.png
 │
 ├── database/
-│   └── car_rental_db.sql        // Full schema + sample data
+│   └── car_rental_db.sql
 │
 ├── lib/
-│   └── mysql-connector-j-9.6.0.jar   // JDBC driver (not pushed to GitHub)
+│   └── mysql-connector-j-9.6.0.jar        ← NOT pushed to GitHub
 │
-├── src/
-│   ├── pckMain/
-│   │   ├── Main.java                  // ✅ DONE — Entry point
-│   │   └── LoginGUI.java              // ✅ DONE — Shared login screen
-│   │
-│   ├── pckModels/
-│   │   ├── User.java                  // ✅ DONE — Base user class
-│   │   ├── Customer.java              // 🔲 TODO — Extends User
-│   │   ├── Admin.java                 // 🔲 TODO — Extends User
-│   │   ├── Car.java                   // ✅ DONE — carId, brand, model, year, plateNumber, category, transmission, seatCapacity, dailyRate, status, imagePath, color
-│   │   ├── Rental.java                // 🔲 TODO
-│   │   └── Payment.java               // 🔲 TODO
-│   │
-│   ├── pckDatabase/
-│   │   ├── DatabaseConnection.java    // ✅ DONE — Singleton DB connection
-│   │   ├── UserDAO.java               // ✅ DONE — Auth queries
-│   │   ├── CustomerDAO.java           // 🔲 TODO
-│   │   ├── CarDAO.java                // ✅ DONE — Full CRUD for cars table + image_path + color support
-│   │   ├── RentalDAO.java             // 🔲 TODO
-│   │   └── PaymentDAO.java            // 🔲 TODO
-│   │
-│   ├── pckAdmin/
-│   │   ├── AdminDashboardGUI.java     // ✅ DONE — Full dashboard with sidebar
-│   │   ├── ManageCarsGUI.java         // 🔲 TODO
-│   │   ├── ManageCustomersGUI.java    // 🔲 TODO
-│   │   ├── ManageRentalsGUI.java      // 🔲 TODO
-│   │   └── ReportsGUI.java            // 🔲 TODO
-│   │
-│   ├── pckCustomer/
-│   │   ├── CustomerDashboardGUI.java  // ✅ DONE — Full dashboard with top bar, menu bar, and content panels
-│   │   ├── BrowseCarsGUI.java         // ✅ DONE — Car grid with search, filters, detail panel, local image loading
-│   │   ├── MyRentalsGUI.java          // 🔲 TODO
-│   │   ├── MakeReservationGUI.java    // 🔲 TODO
-│   │   └── PaymentGUI.java            // 🔲 TODO
-│   │
-│   ├── pckServices/
-│   │   ├── AuthService.java           // ✅ DONE — Login/logout logic
-│   │   ├── CarService.java            // ✅ DONE — Business logic for car CRUD + validation
-│   │   ├── RentalService.java         // 🔲 TODO
-│   │   ├── PaymentService.java        // 🔲 TODO
-│   │   └── ReportService.java         // 🔲 TODO
-│   │
-│   └── pckUtils/
-│       ├── SessionManager.java        // ✅ DONE — Tracks logged-in user
-│       ├── ValidationUtil.java        // 🔲 TODO
-│       ├── DateUtil.java              // 🔲 TODO
-│       └── Constants.java             // 🔲 TODO
+└── src/
+    │
+    ├── pckMain/
+    │   ├── Main.java
+    │   ├── LoginGUI.java
+    │   └── SignUpChoiceGUI.java
+    │
+    ├── pckModels/
+    │   ├── User.java
+    │   ├── Admin.java
+    │   ├── Customer.java
+    │   ├── Driver.java
+    │   ├── Car.java
+    │   ├── Rental.java
+    │   └── Payment.java
+    │
+    ├── pckDatabase/
+    │   ├── DatabaseConnection.java
+    │   ├── UserDAO.java
+    │   ├── CustomerDAO.java               ← updated (+ getAllCustomers)
+    │   ├── DriverDAO.java
+    │   ├── CarDAO.java
+    │   └── RentalDAO.java                 ← updated (+ getAllRentals, hasActiveRental)
+    │
+    ├── pckAdmin/
+    │   ├── AdminDashboardGUI.java
+    │   │
+    │   ├── panels/
+    │   │   ├── OverviewPanel.java         ✅ done
+    │   │   ├── ManagementPanel.java       🔲 next
+    │   │   ├── PaymentsPanel.java         🔲 stub
+    │   │   ├── ReportsPanel.java          🔲 stub
+    │   │   ├── AccountPanel.java          🔲 stub
+    │   │   └── SettingsPanel.java         🔲 stub
+    │   │
+    │   ├── tabs/                          ← new folder
+    │   │   ├── VehiclesTab.java           ✅ done
+    │   │   ├── DriversTab.java            ✅ done
+    │   │   ├── CustomersTab.java          ✅ done
+    │   │   └── RentalsTab.java            ✅ done
+    │   │
+    │   ├── dialogs/                       ← new folder
+    │   │   └── AddVehicleDialog.java      🔲 next
+    │   │
+    │   └── shared/
+    │       └── AdminUIHelper.java
+    │
+    ├── pckCustomer/
+    │   ├── CustomerDashboardGUI.java      🔲 skeleton only
+    │   └── CustomerSignUpGUI.java
+    │
+    ├── pckDriver/
+    │   └── DriverSignUpGUI.java
+    │
+    ├── pckServices/
+    │   ├── AuthService.java
+    │   ├── CustomerService.java
+    │   └── DriverService.java
+    │
+    └── pckUtils/
+        ├── SessionManager.java
+        ├── UIAssets.java
+        ├── CustomTitleBar.java
+|       └── AppConfig.java
 │
 ├── .gitignore
 ├── CONTRIBUTING.md

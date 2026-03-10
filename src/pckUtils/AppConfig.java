@@ -64,7 +64,9 @@ public class AppConfig {
     public static final String ICON_NAV_REPORTS    = "assets/icons/nav/reports.png";
     public static final String ICON_NAV_ACCOUNT    = "assets/icons/nav/account.png";
     public static final String ICON_NAV_SETTINGS   = "assets/icons/nav/settings.png";
-    public static final String ICON_NAV_SIGNOUT    = "assets/icons/nav/signout.png";
+    public static final String ICON_NAV_SIGNOUT     = "assets/icons/nav/signout.png";
+    public static final String ICON_NAV_SIDEBAR_CLOSE = "assets/icons/nav/sidebar-close.png";
+    public static final String ICON_NAV_SIDEBAR_OPEN  = "assets/icons/nav/sidebar-open.png";
 
     // Action icons — buttons inside panels and dialogs
     public static final String ICON_ADD      = "assets/icons/action/add.png";

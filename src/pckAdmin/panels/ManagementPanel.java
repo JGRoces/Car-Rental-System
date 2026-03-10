@@ -2,382 +2,308 @@ package pckAdmin.panels;
 
 import pckAdmin.AdminDashboardGUI.AdminNavCallback;
 import pckAdmin.shared.AdminUIHelper;
-import pckModels.*;
-import pckServices.*;
+import pckAdmin.tabs.CustomersTab;
+import pckAdmin.tabs.DriversTab;
+import pckAdmin.tabs.RentalsTab;
+import pckAdmin.tabs.VehiclesTab;
+import pckAdmin.tabs.VehiclesTab.VehicleNavCallback;
+import pckAdmin.vehicle.AddVehiclePanel;
+import pckAdmin.vehicle.EditVehiclePanel;
+import pckAdmin.vehicle.RemoveVehiclePanel;
+import pckModels.Car;
+import pckUtils.AppConfig;
 import pckUtils.UIAssets;
 
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.List;
 
+/**
+ * ManagementPanel.java
+ * ─────────────────────────────────────────────────────────────
+ * Host panel for the Management section of AdminDashboardGUI.
+ *
+ * Layout:
+ *   ┌─ header row ─────────────────────── [🔄 Refresh] ──────┐
+ *   │  Management   "Manage vehicles, drivers…"               │
+ *   ├─ sub-tab pills ─────────────────────────────────────────┤
+ *   │  [Vehicles]  [Drivers]  [Customers]  [Rentals]          │
+ *   ├─────────────────────────────────────────────────────────┤
+ *   │  ContentArea (CardLayout)                               │
+ *   │    VEHICLES       → VehiclesTab                         │
+ *   │    DRIVERS        → DriversTab                          │
+ *   │    CUSTOMERS      → CustomersTab                        │
+ *   │    RENTALS        → RentalsTab                          │
+ *   │    ADD_VEHICLE    → AddVehiclePanel                     │
+ *   │    EDIT_VEHICLE   → EditVehiclePanel                    │
+ *   │    REMOVE_VEHICLE → RemoveVehiclePanel                  │
+ *   └─────────────────────────────────────────────────────────┘
+ *
+ * Global Refresh button (top-right of header):
+ *   Uses AppConfig.ICON_REFRESH via buildIconOnlyButton — no Unicode
+ *   glyph, so no rectangle-box rendering issue on any OS.
+ *   Hidden automatically on Add / Edit / Remove vehicle pages.
+ *
+ * Each tab no longer has its own per-tab refresh button; all
+ * refreshing flows through refreshActiveTab() here.
+ */
 public class ManagementPanel extends JPanel {
 
-    private static final String[] TAB_LABELS = { "Vehicles", "Drivers", "Customers", "Rentals" };
-    private static final String[] TAB_KEYS   = { "VEHICLES", "DRIVERS", "CUSTOMERS", "RENTALS" };
+    // ── Card keys ─────────────────────────────────────────────
+    private static final String TAB_VEHICLES      = "VEHICLES";
+    private static final String TAB_DRIVERS       = "DRIVERS";
+    private static final String TAB_CUSTOMERS     = "CUSTOMERS";
+    private static final String TAB_RENTALS       = "RENTALS";
+    private static final String PAGE_ADD_VEHICLE  = "ADD_VEHICLE";
+    private static final String PAGE_EDIT_VEHICLE = "EDIT_VEHICLE";
+    private static final String PAGE_REM_VEHICLE  = "REMOVE_VEHICLE";
 
-    private JButton[]  tabButtons;
-    private JPanel     tabContent;
-    private CardLayout tabLayout;
+    private static final String[] TAB_KEYS   =
+        { TAB_VEHICLES, TAB_DRIVERS, TAB_CUSTOMERS, TAB_RENTALS };
+    private static final String[] TAB_LABELS =
+        { "Vehicles", "Drivers", "Customers", "Rentals" };
 
+    // ── Component refs ────────────────────────────────────────
+    private final AdminNavCallback nav;
+    private JButton[]  tabBtns;
+    private JPanel     contentArea;
+    private CardLayout cardLayout;
+    private JButton    refreshBtn;
+    private int        activeTab   = 0;
+    private String     currentCard = TAB_VEHICLES;
+
+    // Tab instances
+    private VehiclesTab  vehiclesTab;
+    private DriversTab   driversTab;
+    private CustomersTab customersTab;
+    private RentalsTab   rentalsTab;
+
+    // Vehicle CRUD page instances
+    private AddVehiclePanel    addVehiclePanel;
+    private EditVehiclePanel   editVehiclePanel;
+    private RemoveVehiclePanel removeVehiclePanel;
+
+    // =========================================================
+    //  CONSTRUCTOR
+    // =========================================================
     public ManagementPanel(AdminNavCallback nav) {
+        this.nav = nav;
         setLayout(new BorderLayout());
         setBackground(UIAssets.getBg());
-        setBorder(new EmptyBorder(32, 36, 0, 36));
+        setBorder(new EmptyBorder(32, 36, 32, 36));
         build();
     }
 
+    // =========================================================
+    //  BUILD
+    // =========================================================
     private void build() {
-        // Header
-        JPanel header = new JPanel(new BorderLayout());
-        header.setOpaque(false);
-        header.setBorder(new EmptyBorder(0, 0, 0, 0));
-        header.add(AdminUIHelper.buildPageHeader(
-            "All Inventory & Population",
-            "Manage vehicles, drivers, customers, and rentals."
-        ), BorderLayout.NORTH);
-        header.add(buildTabBar(), BorderLayout.SOUTH);
-        add(header, BorderLayout.NORTH);
-
-        // Content
-        tabLayout  = new CardLayout();
-        tabContent = new JPanel(tabLayout);
-        tabContent.setOpaque(false);
-        tabContent.add(buildVehiclesTab(), TAB_KEYS[0]);
-        tabContent.add(buildDriversTab(),  TAB_KEYS[1]);
-        tabContent.add(buildCustomersTab(),TAB_KEYS[2]);
-        tabContent.add(buildRentalsTab(),  TAB_KEYS[3]);
-        tabLayout.show(tabContent, TAB_KEYS[0]);
-        add(tabContent, BorderLayout.CENTER);
+        add(buildTop(),     BorderLayout.NORTH);
+        add(buildContent(), BorderLayout.CENTER);
     }
 
-    private JPanel buildTabBar() {
-        JPanel bar = new JPanel(new BorderLayout());
-        bar.setOpaque(false);
+    // ── Top — header row + pills + divider ────────────────────
+    private JPanel buildTop() {
+        JPanel top = new JPanel();
+        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+        top.setOpaque(false);
 
-        JPanel tabs = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        tabs.setOpaque(false);
-        tabButtons = new JButton[TAB_LABELS.length];
-        for (int i = 0; i < TAB_LABELS.length; i++) {
+        top.add(buildHeaderRow());
+        top.add(Box.createVerticalStrut(20));
+        top.add(buildPillRow());
+        top.add(Box.createVerticalStrut(4));
+
+        JSeparator div = AdminUIHelper.buildDivider();
+        div.setAlignmentX(Component.LEFT_ALIGNMENT);
+        div.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        top.add(div);
+
+        return top;
+    }
+
+    /**
+     * Header row — page title left, Refresh icon button right.
+     * Uses buildIconOnlyButton with AppConfig.ICON_REFRESH so the
+     * icon renders from the actual PNG — no Unicode glyph involved.
+     */
+    private JPanel buildHeaderRow() {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
+
+        JPanel header = AdminUIHelper.buildPageHeader(
+            "Management",
+            "Manage vehicles, drivers, customers, and rental records"
+        );
+        header.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // ── Global refresh — proper PNG icon, no Unicode box ──
+        refreshBtn = AdminUIHelper.buildIconOnlyButton(
+                AppConfig.ICON_REFRESH, UIAssets.CLR_BLUE, "Refresh current tab");
+        refreshBtn.addActionListener(e -> refreshActiveTab());
+
+        row.add(header,     BorderLayout.WEST);
+        row.add(refreshBtn, BorderLayout.EAST);
+        return row;
+    }
+
+    private JPanel buildPillRow() {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        tabBtns = new JButton[TAB_KEYS.length];
+        for (int i = 0; i < TAB_KEYS.length; i++) {
             final int idx = i;
-            tabButtons[i] = buildTabButton(TAB_LABELS[i], i == 0);
-            tabButtons[i].addActionListener(e -> switchTab(idx));
-            tabs.add(tabButtons[i]);
+            tabBtns[i] = buildPillButton(TAB_LABELS[i], i == 0);
+            tabBtns[i].addActionListener(e -> selectTab(idx));
+            row.add(tabBtns[i]);
         }
-
-        JSeparator line = new JSeparator();
-        line.setForeground(UIAssets.getBorder());
-
-        bar.add(tabs, BorderLayout.CENTER);
-        bar.add(line, BorderLayout.SOUTH);
-        return bar;
+        return row;
     }
 
-    private JButton buildTabButton(String label, boolean active) {
+    // ── Content area ──────────────────────────────────────────
+    private JPanel buildContent() {
+        cardLayout  = new CardLayout();
+        contentArea = new JPanel(cardLayout);
+        contentArea.setBackground(UIAssets.getBg());
+
+        VehicleNavCallback vehicleNav = new VehicleNavCallback() {
+            @Override public void goToAdd()         { showAddVehicle();      }
+            @Override public void goToEdit(Car c)   { showEditVehicle(c);   }
+            @Override public void goToRemove(Car c) { showRemoveVehicle(c); }
+        };
+
+        vehiclesTab  = new VehiclesTab(vehicleNav);
+        driversTab   = new DriversTab();
+        customersTab = new CustomersTab();
+        rentalsTab   = new RentalsTab();
+
+        Runnable backToVehicles = () -> {
+            vehiclesTab.refresh();
+            showTab(TAB_VEHICLES);
+        };
+        addVehiclePanel    = new AddVehiclePanel(
+            backToVehicles,
+            () -> { vehiclesTab.refresh(); showTab(TAB_VEHICLES); });
+        editVehiclePanel   = new EditVehiclePanel(
+            backToVehicles,
+            () -> { vehiclesTab.refresh(); showTab(TAB_VEHICLES); });
+        removeVehiclePanel = new RemoveVehiclePanel(
+            backToVehicles,
+            () -> { vehiclesTab.refresh(); showTab(TAB_VEHICLES); });
+
+        contentArea.add(vehiclesTab,        TAB_VEHICLES);
+        contentArea.add(driversTab,         TAB_DRIVERS);
+        contentArea.add(customersTab,       TAB_CUSTOMERS);
+        contentArea.add(rentalsTab,         TAB_RENTALS);
+        contentArea.add(addVehiclePanel,    PAGE_ADD_VEHICLE);
+        contentArea.add(editVehiclePanel,   PAGE_EDIT_VEHICLE);
+        contentArea.add(removeVehiclePanel, PAGE_REM_VEHICLE);
+
+        cardLayout.show(contentArea, TAB_VEHICLES);
+        return contentArea;
+    }
+
+    // =========================================================
+    //  TAB SELECTION
+    // =========================================================
+    private void selectTab(int index) {
+        activeTab = index;
+        for (int i = 0; i < tabBtns.length; i++) setPillActive(tabBtns[i], i == index);
+        showTab(TAB_KEYS[index]);
+    }
+
+    private void showTab(String key) {
+        currentCard = key;
+        cardLayout.show(contentArea, key);
+        boolean isTabPage = key.equals(TAB_VEHICLES)  || key.equals(TAB_DRIVERS)
+                         || key.equals(TAB_CUSTOMERS) || key.equals(TAB_RENTALS);
+        refreshBtn.setVisible(isTabPage);
+    }
+
+    private void setPillActive(JButton btn, boolean active) {
+        btn.setBackground(active ? UIAssets.CLR_BLUE : UIAssets.getBg());
+        btn.setForeground(active ? Color.WHITE : UIAssets.getTextSecondary());
+        btn.setFont(active ? UIAssets.FONT_NAV_BOLD : UIAssets.FONT_NAV);
+    }
+
+    // =========================================================
+    //  VEHICLE CRUD NAVIGATION
+    // =========================================================
+    private void showAddVehicle() {
+        currentCard = PAGE_ADD_VEHICLE;
+        cardLayout.show(contentArea, PAGE_ADD_VEHICLE);
+        refreshBtn.setVisible(false);
+    }
+
+    private void showEditVehicle(Car car) {
+        editVehiclePanel.load(car);
+        currentCard = PAGE_EDIT_VEHICLE;
+        cardLayout.show(contentArea, PAGE_EDIT_VEHICLE);
+        refreshBtn.setVisible(false);
+    }
+
+    private void showRemoveVehicle(Car car) {
+        removeVehiclePanel.load(car);
+        currentCard = PAGE_REM_VEHICLE;
+        cardLayout.show(contentArea, PAGE_REM_VEHICLE);
+        refreshBtn.setVisible(false);
+    }
+
+    // =========================================================
+    //  GLOBAL REFRESH
+    //  Delegates to whichever tab is currently active.
+    //  Individual tabs no longer have their own refresh buttons.
+    // =========================================================
+    private void refreshActiveTab() {
+        switch (currentCard) {
+            case TAB_VEHICLES  -> vehiclesTab.refresh();
+            case TAB_DRIVERS   -> driversTab.refresh();
+            case TAB_CUSTOMERS -> customersTab.refresh();
+            case TAB_RENTALS   -> rentalsTab.refresh();
+        }
+    }
+
+    // =========================================================
+    //  PILL BUTTON
+    // =========================================================
+    private JButton buildPillButton(String label, boolean active) {
         JButton btn = new JButton(label) {
             @Override protected void paintComponent(Graphics g) {
-                if (getBackground().equals(UIAssets.CLR_BLUE)) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setColor(UIAssets.CLR_BLUE);
-                    g2.fillRect(0, getHeight() - 3, getWidth(), 3);
-                    g2.dispose();
-                }
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                                    RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2.dispose();
                 super.paintComponent(g);
             }
         };
-        btn.setFont(active ? UIAssets.FONT_H3 : UIAssets.FONT_BODY);
-        btn.setForeground(active ? UIAssets.CLR_BLUE : UIAssets.getTextSecondary());
-        btn.setBackground(active ? UIAssets.CLR_BLUE : new Color(0, 0, 0, 0));
-        btn.setContentAreaFilled(false); btn.setBorderPainted(false); btn.setFocusPainted(false);
+        btn.setFont(active ? UIAssets.FONT_NAV_BOLD : UIAssets.FONT_NAV);
+        btn.setForeground(active ? Color.WHITE : UIAssets.getTextSecondary());
+        btn.setBackground(active ? UIAssets.CLR_BLUE : UIAssets.getBg());
+        btn.setBorderPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(new EmptyBorder(10, 0, 12, 28));
-        btn.setOpaque(false);
+        btn.setBorder(new EmptyBorder(7, 18, 7, 18));
         btn.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) {
-                if (!btn.getBackground().equals(UIAssets.CLR_BLUE)) btn.setForeground(UIAssets.getTextPrimary());
+                if (!btn.getBackground().equals(UIAssets.CLR_BLUE)) {
+                    btn.setBackground(UIAssets.CLR_BLUE_LIGHT);
+                    btn.setForeground(UIAssets.CLR_BLUE);
+                }
             }
             @Override public void mouseExited(MouseEvent e) {
-                if (!btn.getBackground().equals(UIAssets.CLR_BLUE)) btn.setForeground(UIAssets.getTextSecondary());
+                if (!btn.getBackground().equals(UIAssets.CLR_BLUE)) {
+                    btn.setBackground(UIAssets.getBg());
+                    btn.setForeground(UIAssets.getTextSecondary());
+                }
             }
         });
         return btn;
-    }
-
-    private void switchTab(int index) {
-        for (int i = 0; i < tabButtons.length; i++) {
-            boolean active = (i == index);
-            tabButtons[i].setBackground(active ? UIAssets.CLR_BLUE : new Color(0, 0, 0, 0));
-            tabButtons[i].setForeground(active ? UIAssets.CLR_BLUE : UIAssets.getTextSecondary());
-            tabButtons[i].setFont(active ? UIAssets.FONT_H3 : UIAssets.FONT_BODY);
-            tabButtons[i].repaint();
-        }
-        tabLayout.show(tabContent, TAB_KEYS[index]);
-    }
-
-    // ── VEHICLES ──────────────────────────────────────────────
-    private JPanel buildVehiclesTab() {
-        String[] cols = { "ID", "Brand", "Model", "Year", "Plate No.", "Category", "Daily Rate", "Status" };
-        List<Car> cars = CarService.getAllCars();
-        Object[][] rows = new Object[cars.size()][];
-        for (int i = 0; i < cars.size(); i++) {
-            Car c = cars.get(i);
-            rows[i] = new Object[]{ c.getCarId(), c.getBrand(), c.getModel(), c.getYear(),
-                c.getPlateNumber(), c.getCategory(),
-                "\u20b1" + String.format("%,.2f", c.getDailyRate()), c.getStatus() };
-        }
-        JTable table = AdminUIHelper.buildStyledTable(cols, rows);
-        table.getColumnModel().getColumn(7).setCellRenderer(new AdminUIHelper.StatusBadgeRenderer());
-
-        JButton addBtn = AdminUIHelper.buildSolidButton("+ Add Vehicle", UIAssets.CLR_BLUE);
-        addBtn.addActionListener(e -> showAddVehicleDialog(table, rows));
-
-        return buildTabPanel(table, rows.length, addBtn);
-    }
-
-    private void showAddVehicleDialog(JTable table, Object[][] existingRows) {
-        JTextField brand = new JTextField(), model = new JTextField(),
-            year = new JTextField(), plate = new JTextField(),
-            rate = new JTextField(), color = new JTextField(), seats = new JTextField("5");
-        JComboBox<String> cat  = new JComboBox<>(new String[]{"Sedan","SUV","Van","Truck","Pickup","Coupe","Minivan","MPV"});
-        JComboBox<String> trans= new JComboBox<>(new String[]{"Automatic","Manual","CVT"});
-        JComboBox<String> fuel = new JComboBox<>(new String[]{"Gasoline","Diesel","Hybrid","Electric"});
-        JComboBox<String> stat = new JComboBox<>(new String[]{"AVAILABLE","MAINTENANCE"});
-
-        JPanel form = buildFormGrid(
-            new String[]{"Brand","Model","Year","Plate Number","Category","Transmission","Fuel Type","Seats","Daily Rate","Color","Status"},
-            new JComponent[]{brand, model, year, plate, cat, trans, fuel, seats, rate, color, stat}
-        );
-        if (JOptionPane.showConfirmDialog(this, form, "Add Vehicle",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
-            try {
-                Car car = new Car(brand.getText().trim(), model.getText().trim(),
-                    Integer.parseInt(year.getText().trim()), plate.getText().trim(),
-                    (String)cat.getSelectedItem(), (String)trans.getSelectedItem(),
-                    (String)fuel.getSelectedItem(), Integer.parseInt(seats.getText().trim()),
-                    new java.math.BigDecimal(rate.getText().trim()));
-                car.setStatus((String)stat.getSelectedItem());
-                car.setColor(color.getText().trim());
-                int id = CarService.addCar(car);
-                if (id > 0) {
-                    JOptionPane.showMessageDialog(this, "Vehicle added successfully.");
-                    refreshTab(0);
-                } else {
-                    JOptionPane.showMessageDialog(this, "Failed. Plate may already exist.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Invalid year, seats, or rate.", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
-
-    // ── DRIVERS ───────────────────────────────────────────────
-    private JPanel buildDriversTab() {
-        String[] cols = { "ID", "Name", "Email", "Phone", "License No.", "Expiry", "Vehicle Type", "Status" };
-        List<Driver> drivers = new pckDatabase.DriverDAO().getDriversByStatus(Driver.STATUS_PENDING);
-        Object[][] rows = new Object[drivers.size()][];
-        for (int i = 0; i < drivers.size(); i++) {
-            Driver d = drivers.get(i);
-            rows[i] = new Object[]{ d.getDriverId(), d.getFullName(), d.getEmail(),
-                d.getPhone(), d.getLicenseNumber(), d.getLicenseExpiry(),
-                d.getVehicleType(), d.getStatus() };
-        }
-        JTable table = AdminUIHelper.buildStyledTable(cols, rows);
-        table.getColumnModel().getColumn(7).setCellRenderer(new AdminUIHelper.StatusBadgeRenderer());
-
-        JButton addBtn = AdminUIHelper.buildSolidButton("+ Add Driver", UIAssets.CLR_GREEN);
-        addBtn.addActionListener(e -> showAddDriverDialog());
-
-        JPanel panel = buildTabPanel(table, rows.length, addBtn);
-
-        // Verify / Reject buttons below table
-        DefaultTableModel model = (DefaultTableModel) table.getModel();
-        JButton verifyBtn = AdminUIHelper.buildSolidButton("Verify", UIAssets.CLR_GREEN);
-        JButton rejectBtn = AdminUIHelper.buildSolidButton("Reject", UIAssets.CLR_RED);
-        verifyBtn.addActionListener(e -> {
-            int row = table.getSelectedRow();
-            if (row < 0) { JOptionPane.showMessageDialog(this, "Select a driver first."); return; }
-            int driverId = (int) model.getValueAt(row, 0);
-            if (DriverService.verify(driverId)) {
-                model.setValueAt("VERIFIED", row, 7);
-                JOptionPane.showMessageDialog(this, "Driver verified.");
-            }
-        });
-        rejectBtn.addActionListener(e -> {
-            int row = table.getSelectedRow();
-            if (row < 0) { JOptionPane.showMessageDialog(this, "Select a driver first."); return; }
-            int driverId = (int) model.getValueAt(row, 0);
-            if (DriverService.reject(driverId)) {
-                model.setValueAt("REJECTED", row, 7);
-                JOptionPane.showMessageDialog(this, "Driver rejected.");
-            }
-        });
-        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        actionRow.setOpaque(false);
-        actionRow.setBorder(new EmptyBorder(8, 0, 0, 0));
-        actionRow.add(verifyBtn); actionRow.add(rejectBtn);
-        panel.add(actionRow, BorderLayout.SOUTH);
-        return panel;
-    }
-
-    private void showAddDriverDialog() {
-        JTextField name = new JTextField(), email = new JTextField(),
-            phone = new JTextField(), license = new JTextField(),
-            expiry = new JTextField("YYYY-MM-DD"), vtype = new JTextField();
-        JPasswordField pass = new JPasswordField();
-        JPanel form = buildFormGrid(
-            new String[]{"Full Name","Email","Password","Phone","License Number","License Expiry","Vehicle Type"},
-            new JComponent[]{name, email, pass, phone, license, expiry, vtype}
-        );
-        if (JOptionPane.showConfirmDialog(this, form, "Add Driver",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
-            String password = new String(pass.getPassword());
-            DriverService.RegisterResult result = DriverService.register(
-                name.getText().trim(), email.getText().trim(), phone.getText().trim(),
-                password, password, license.getText().trim(),
-                expiry.getText().trim(), vtype.getText().trim(), null);
-            if (result == DriverService.RegisterResult.SUCCESS) {
-                JOptionPane.showMessageDialog(this, "Driver added. Status: PENDING.");
-                refreshTab(1);
-            } else {
-                JOptionPane.showMessageDialog(this, DriverService.getMessage(result), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
-
-    // ── CUSTOMERS ─────────────────────────────────────────────
-    private JPanel buildCustomersTab() {
-        String[] cols = { "ID", "Name", "Email", "Phone" };
-        List<Customer> customers = new pckDatabase.CustomerDAO().getAllCustomerProfiles();
-        Object[][] rows = new Object[customers.size()][];
-        for (int i = 0; i < customers.size(); i++) {
-            Customer c = customers.get(i);
-            rows[i] = new Object[]{ c.getCustomerId(), c.getFullName(), c.getEmail(), c.getPhone() };
-        }
-        JTable table = AdminUIHelper.buildStyledTable(cols, rows);
-        return buildTabPanel(table, rows.length, null);
-    }
-
-    // ── RENTALS ───────────────────────────────────────────────
-    private JPanel buildRentalsTab() {
-        String[] cols = { "ID", "Customer ID", "Car ID", "Start", "End", "Amount", "Status" };
-        List<pckModels.Rental> rentals = RentalService.getAllRentals();
-        Object[][] rows = new Object[rentals.size()][];
-        for (int i = 0; i < rentals.size(); i++) {
-            pckModels.Rental r = rentals.get(i);
-            rows[i] = new Object[]{ r.getRentalId(), r.getCustomerId(), r.getCarId(),
-                r.getStartDate(), r.getEndDate(),
-                "\u20b1" + String.format("%,.2f", r.getTotalAmount()), r.getStatus() };
-        }
-        JTable table = AdminUIHelper.buildStyledTable(cols, rows);
-        table.getColumnModel().getColumn(6).setCellRenderer(new AdminUIHelper.StatusBadgeRenderer());
-
-        JButton newBtn = AdminUIHelper.buildSolidButton("+ New Rental", UIAssets.CLR_YELLOW);
-        newBtn.addActionListener(e -> showNewRentalDialog());
-
-        JPanel panel = buildTabPanel(table, rows.length, newBtn);
-
-        DefaultTableModel model = (DefaultTableModel) table.getModel();
-        JButton completeBtn = AdminUIHelper.buildSolidButton("Mark Complete", UIAssets.CLR_GREEN);
-        JButton cancelBtn   = AdminUIHelper.buildSolidButton("Cancel Rental", UIAssets.CLR_RED);
-        completeBtn.addActionListener(e -> {
-            int row = table.getSelectedRow();
-            if (row < 0) { JOptionPane.showMessageDialog(this, "Select a rental first."); return; }
-            int id = (int) model.getValueAt(row, 0);
-            if (RentalService.completeRental(id)) { model.setValueAt("COMPLETED", row, 6); }
-        });
-        cancelBtn.addActionListener(e -> {
-            int row = table.getSelectedRow();
-            if (row < 0) { JOptionPane.showMessageDialog(this, "Select a rental first."); return; }
-            int id = (int) model.getValueAt(row, 0);
-            if (RentalService.cancelRental(id)) { model.setValueAt("CANCELLED", row, 6); }
-        });
-        JPanel actionRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        actionRow.setOpaque(false);
-        actionRow.setBorder(new EmptyBorder(8, 0, 0, 0));
-        actionRow.add(completeBtn); actionRow.add(cancelBtn);
-        panel.add(actionRow, BorderLayout.SOUTH);
-        return panel;
-    }
-
-    private void showNewRentalDialog() {
-        List<Customer> customers = new pckDatabase.CustomerDAO().getAllCustomerProfiles();
-        List<Car> cars = CarService.getAvailableCars();
-        if (customers.isEmpty()) { JOptionPane.showMessageDialog(this, "No customers found."); return; }
-        if (cars.isEmpty())      { JOptionPane.showMessageDialog(this, "No available vehicles."); return; }
-
-        JComboBox<String> custBox = new JComboBox<>();
-        for (Customer c : customers) custBox.addItem(c.getCustomerId() + " - " + c.getFullName());
-        JComboBox<String> carBox = new JComboBox<>();
-        for (Car c : cars) carBox.addItem(c.getCarId() + " - " + c.getBrand() + " " + c.getModel() + " (" + c.getPlateNumber() + ")");
-        JTextField startField = new JTextField("YYYY-MM-DD");
-        JTextField endField   = new JTextField("YYYY-MM-DD");
-
-        JPanel form = buildFormGrid(
-            new String[]{"Customer","Vehicle","Start Date","End Date"},
-            new JComponent[]{custBox, carBox, startField, endField}
-        );
-        if (JOptionPane.showConfirmDialog(this, form, "New Rental",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
-            try {
-                int custId = Integer.parseInt(custBox.getSelectedItem().toString().split(" - ")[0]);
-                int carId  = Integer.parseInt(carBox.getSelectedItem().toString().split(" - ")[0]);
-                Car selCar = cars.stream().filter(c -> c.getCarId() == carId).findFirst().orElse(null);
-                java.time.LocalDate start = java.time.LocalDate.parse(startField.getText().trim());
-                java.time.LocalDate end   = java.time.LocalDate.parse(endField.getText().trim());
-                if (selCar != null && RentalService.bookRental(custId, carId, start, end, selCar.getDailyRate())) {
-                    JOptionPane.showMessageDialog(this, "Rental created successfully.");
-                    refreshTab(3);
-                } else {
-                    JOptionPane.showMessageDialog(this, "Failed to create rental.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Invalid date format. Use YYYY-MM-DD.", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
-
-    // ── HELPERS ───────────────────────────────────────────────
-    private JPanel buildTabPanel(JTable table, int count, JButton addBtn) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setOpaque(false);
-        panel.setBorder(new EmptyBorder(16, 0, 16, 0));
-
-        JPanel toolbar = new JPanel(new BorderLayout());
-        toolbar.setOpaque(false);
-        toolbar.setBorder(new EmptyBorder(0, 0, 10, 0));
-        JLabel countLbl = new JLabel(count + " record(s)");
-        countLbl.setFont(UIAssets.FONT_SMALL);
-        countLbl.setForeground(UIAssets.getTextSecondary());
-        toolbar.add(countLbl, BorderLayout.WEST);
-        if (addBtn != null) toolbar.add(addBtn, BorderLayout.EAST);
-
-        panel.add(toolbar, BorderLayout.NORTH);
-        panel.add(AdminUIHelper.buildTableScrollPane(table), BorderLayout.CENTER);
-        return panel;
-    }
-
-    private JPanel buildFormGrid(String[] labels, JComponent[] fields) {
-        JPanel form = new JPanel(new GridLayout(labels.length, 2, 8, 8));
-        form.setBorder(new EmptyBorder(8, 8, 8, 8));
-        for (int i = 0; i < labels.length; i++) {
-            form.add(new JLabel(labels[i]));
-            form.add(fields[i]);
-        }
-        return form;
-    }
-
-    private void refreshTab(int index) {
-        tabContent.remove(tabContent.getComponent(index));
-        JPanel fresh = switch (index) {
-            case 0 -> buildVehiclesTab();
-            case 1 -> buildDriversTab();
-            case 2 -> buildCustomersTab();
-            case 3 -> buildRentalsTab();
-            default -> new JPanel();
-        };
-        tabContent.add(fresh, TAB_KEYS[index], index);
-        switchTab(index);
     }
 }
