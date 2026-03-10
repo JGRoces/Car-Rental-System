@@ -93,6 +93,12 @@ public class ManagementPanel extends JPanel {
         setBackground(UIAssets.getBg());
         setBorder(new EmptyBorder(32, 36, 32, 36));
         build();
+        // Refresh all tabs when this panel becomes visible
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentShown(java.awt.event.ComponentEvent e) {
+                refreshActiveTab();
+            }
+        });
     }
 
     // =========================================================
@@ -213,6 +219,34 @@ public class ManagementPanel extends JPanel {
     private void selectTab(int index) {
         activeTab = index;
         for (int i = 0; i < tabBtns.length; i++) setPillActive(tabBtns[i], i == index);
+        // Rebuild the selected tab with fresh data
+        switch (TAB_KEYS[index]) {
+            case TAB_DRIVERS -> {
+                contentArea.remove(driversTab);
+                driversTab = new DriversTab();
+                contentArea.add(driversTab, TAB_DRIVERS, 1);
+            }
+            case TAB_CUSTOMERS -> {
+                contentArea.remove(customersTab);
+                customersTab = new CustomersTab();
+                contentArea.add(customersTab, TAB_CUSTOMERS, 2);
+            }
+            case TAB_RENTALS -> {
+                contentArea.remove(rentalsTab);
+                rentalsTab = new RentalsTab();
+                contentArea.add(rentalsTab, TAB_RENTALS, 3);
+            }
+            case TAB_VEHICLES -> {
+                contentArea.remove(vehiclesTab);
+                VehicleNavCallback vehicleNav = new VehicleNavCallback() {
+                    @Override public void goToAdd()         { showAddVehicle();      }
+                    @Override public void goToEdit(Car c)   { showEditVehicle(c);   }
+                    @Override public void goToRemove(Car c) { showRemoveVehicle(c); }
+                };
+                vehiclesTab = new VehiclesTab(vehicleNav);
+                contentArea.add(vehiclesTab, TAB_VEHICLES, 0);
+            }
+        }
         showTab(TAB_KEYS[index]);
     }
 
@@ -259,12 +293,7 @@ public class ManagementPanel extends JPanel {
     //  Individual tabs no longer have their own refresh buttons.
     // =========================================================
     private void refreshActiveTab() {
-        switch (currentCard) {
-            case TAB_VEHICLES  -> vehiclesTab.refresh();
-            case TAB_DRIVERS   -> driversTab.refresh();
-            case TAB_CUSTOMERS -> customersTab.refresh();
-            case TAB_RENTALS   -> rentalsTab.refresh();
-        }
+        selectTab(activeTab);
     }
 
     // =========================================================

@@ -160,12 +160,39 @@ public class BrowseCarsGUI extends JPanel {
             refreshBtn.setEnabled(true);
         });
 
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         right.setBackground(UIAssets.getBg());
+        right.add(buildFilterCombo("Type",
+            new String[]{ "All Types", "Sedan", "SUV", "MPV", "Van", "Pickup", "Coupe", "Minivan", "Truck" },
+            v -> { if (v.equals("All Types")) { activeFilters.remove("Type"); applyFilters(); } else filterByType(v); }));
+        right.add(buildFilterCombo("Brand",
+            new String[]{ "All Brands", "Toyota", "Honda", "Mitsubishi", "BYD", "Ford", "Nissan", "Isuzu", "Mazda", "Kia" },
+            v -> { if (v.equals("All Brands")) { activeFilters.remove("Brand"); applyFilters(); } else filterByBrand(v); }));
+        right.add(buildFilterCombo("Transmission",
+            new String[]{ "All", "Automatic", "Manual", "CVT" },
+            v -> { if (v.equals("All")) { activeFilters.remove("Transmission"); applyFilters(); } else filterByTransmission(v); }));
+        right.add(buildFilterCombo("Fuel",
+            new String[]{ "All Fuels", "Gasoline", "Diesel", "Hybrid", "Electric" },
+            v -> { if (v.equals("All Fuels")) { activeFilters.remove("Fuel Type"); applyFilters(); } else filterByFuelType(v); }));
+        right.add(buildFilterCombo("Price",
+            new String[]{ "All Prices", "Under \u20B11,000", "\u20B11,000\u2013\u20B12,000", "Above \u20B12,000" },
+            v -> { if (v.equals("All Prices")) { activeFilters.remove("Price"); applyFilters(); } else filterByPriceRange(v); }));
         right.add(refreshBtn);
         header.add(left, BorderLayout.WEST);
         header.add(right, BorderLayout.EAST);
         return header;
+    }
+
+    private javax.swing.JComboBox<String> buildFilterCombo(String label, String[] options, java.util.function.Consumer<String> onSelect) {
+        javax.swing.JComboBox<String> combo = new javax.swing.JComboBox<>(options);
+        combo.setFont(UIAssets.FONT_SMALL);
+        combo.setPreferredSize(new Dimension(140, 34));
+        combo.setToolTipText("Filter by " + label);
+        combo.addActionListener(e -> {
+            String selected = (String) combo.getSelectedItem();
+            if (selected != null) onSelect.accept(selected);
+        });
+        return combo;
     }
 
     private JPanel buildSearchBar() {
@@ -735,11 +762,21 @@ public class BrowseCarsGUI extends JPanel {
 
     private BufferedImage loadImageRaw(String filename) {
         if (filename == null || filename.isBlank()) return null;
+        java.io.File f = new java.io.File("assets/images/" + filename);
+        if (!f.exists()) { System.err.println("[BrowseCarsGUI] Image not found: " + f.getAbsolutePath()); return null; }
         try {
-            File file = new File("assets/images/" + filename);
-            if (!file.exists()) { System.err.println("[BrowseCarsGUI] Image not found: " + file.getAbsolutePath()); return null; }
-            return ImageIO.read(file);
-        } catch (Exception e) { System.err.println("[BrowseCarsGUI] Error loading image: " + filename); return null; }
+            // Try ImageIO first (jpg/png), fall back to Toolkit for webp
+            BufferedImage img = javax.imageio.ImageIO.read(f);
+            if (img != null) return img;
+            java.awt.Image raw = java.awt.Toolkit.getDefaultToolkit().createImage(f.getAbsolutePath());
+            java.awt.MediaTracker mt = new java.awt.MediaTracker(this);
+            mt.addImage(raw, 0);
+            mt.waitForAll();
+            if (raw.getWidth(null) <= 0) return null;
+            BufferedImage buf = new BufferedImage(raw.getWidth(null), raw.getHeight(null), BufferedImage.TYPE_INT_ARGB);
+            buf.getGraphics().drawImage(raw, 0, 0, null);
+            return buf;
+        } catch (Exception e) { return null; }
     }
 
     private Color parseColor(String colorName) {
@@ -809,21 +846,8 @@ public class BrowseCarsGUI extends JPanel {
     }
 
     private void rebuildChipRow() {
-        chipRow.removeAll();
-        if (activeFilters.isEmpty()) { chipRow.setVisible(false); chipRow.revalidate(); chipRow.repaint(); return; }
-        for (java.util.Map.Entry<String, String> f : activeFilters.entrySet()) chipRow.add(buildChip(f.getKey(), f.getValue()));
-        if (activeFilters.size() > 1) {
-            JLabel clearAll = new JLabel("Clear All");
-            clearAll.setFont(new Font("Segoe UI", Font.BOLD, 11));
-            clearAll.setForeground(UIAssets.CLR_RED);
-            clearAll.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            clearAll.setBorder(new EmptyBorder(2, 8, 2, 4));
-            clearAll.addMouseListener(new MouseAdapter() { @Override public void mouseClicked(MouseEvent e) { showAll(); } });
-            chipRow.add(clearAll);
-        }
-        chipRow.setVisible(true);
-        chipRow.revalidate();
-        chipRow.repaint();
+        // Chip row disabled — filters shown in combos instead
+        chipRow.setVisible(false);
     }
 
     private JPanel buildChip(String category, String value) {

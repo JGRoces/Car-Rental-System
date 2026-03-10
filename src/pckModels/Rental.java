@@ -15,6 +15,7 @@ public class Rental {
     private int        rentalId;
     private int        customerId;
     private int        carId;
+    private int        driverId;
     private LocalDate  startDate;
     private LocalDate  endDate;
     private BigDecimal totalAmount;
@@ -31,12 +32,13 @@ public class Rental {
     }
 
     // Loaded from DB — has rentalId, totalAmount, and status
-    public Rental(int rentalId, int customerId, int carId,
+    public Rental(int rentalId, int customerId, int carId, int driverId,
                   LocalDate startDate, LocalDate endDate,
                   BigDecimal totalAmount, String status) {
         this.rentalId    = rentalId;
         this.customerId  = customerId;
         this.carId       = carId;
+        this.driverId    = driverId;
         this.startDate   = startDate;
         this.endDate     = endDate;
         this.totalAmount = totalAmount;
@@ -46,6 +48,7 @@ public class Rental {
     public int        getRentalId()    { return rentalId;    }
     public int        getCustomerId()  { return customerId;  }
     public int        getCarId()       { return carId;       }
+    public int        getDriverId()    { return driverId;    }
     public LocalDate  getStartDate()   { return startDate;   }
     public LocalDate  getEndDate()     { return endDate;     }
     public BigDecimal getTotalAmount() { return totalAmount; }
@@ -54,6 +57,7 @@ public class Rental {
     public void setRentalId(int rentalId)          { this.rentalId    = rentalId;    }
     public void setCustomerId(int customerId)      { this.customerId  = customerId;  }
     public void setCarId(int carId)                { this.carId       = carId;       }
+    public void setDriverId(int driverId)          { this.driverId    = driverId;    }
     public void setStartDate(LocalDate startDate)  { this.startDate   = startDate;   }
     public void setEndDate(LocalDate endDate)      { this.endDate     = endDate;     }
     public void setTotalAmount(BigDecimal amount)  { this.totalAmount = amount;      }

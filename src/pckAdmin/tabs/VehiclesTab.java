@@ -273,7 +273,9 @@ public class VehiclesTab extends JPanel {
         card.setCursor(new Cursor(Cursor.HAND_CURSOR));
         if (isSelected) selectedCardPanel = card;
 
-        String imgPath = AppConfig.vehiclePhoto(car.getCarId(), car.getCategory());
+        String imgPath = car.getImagePath() != null && !car.getImagePath().isBlank()
+            ? "assets/images/" + car.getImagePath()
+            : AppConfig.DEFAULT_VEHICLE;
         card.add(buildCardImage(imgPath, 220, 150), BorderLayout.NORTH);
 
         JPanel info = new JPanel();
@@ -477,8 +479,14 @@ public class VehiclesTab extends JPanel {
         try {
             java.io.File f = new java.io.File(path);
             if (!f.exists()) return null;
+            // Try ImageIO first (jpg/png), fall back to Toolkit for webp
             BufferedImage src = javax.imageio.ImageIO.read(f);
-            return src == null ? null : src.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+            if (src != null) return src.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+            Image img = Toolkit.getDefaultToolkit().createImage(f.getAbsolutePath());
+            MediaTracker mt = new MediaTracker(this);
+            mt.addImage(img, 0);
+            mt.waitForAll();
+            return (img.getWidth(null) > 0) ? img.getScaledInstance(w, h, Image.SCALE_SMOOTH) : null;
         } catch (Exception e) { return null; }
     }
 

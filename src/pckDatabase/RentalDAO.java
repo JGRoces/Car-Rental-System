@@ -21,6 +21,7 @@ public class RentalDAO {
             rs.getInt("rental_id"),
             rs.getInt("customer_id"),
             rs.getInt("car_id"),
+            rs.getInt("driver_id"),
             rs.getDate("start_date").toLocalDate(),
             rs.getDate("end_date").toLocalDate(),
             rs.getBigDecimal("total_amount"),
@@ -126,5 +127,82 @@ public class RentalDAO {
             System.err.println("[RentalDAO] Error updating rental status: " + e.getMessage());
             return false;
         }
+    }
+
+    public boolean assignDriver(int rentalId, int driverId) {
+        String sql = "UPDATE rentals SET driver_id = ? WHERE rental_id = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, driverId);
+            pstmt.setInt(2, rentalId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[RentalDAO] Error assigning driver: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean updateDatesAndStatus(int rentalId, java.time.LocalDate startDate,
+            java.time.LocalDate endDate, java.math.BigDecimal totalAmount, String status) {
+        String sql = "UPDATE rentals SET start_date=?, end_date=?, total_amount=?, status=? WHERE rental_id=?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDate(1, Date.valueOf(startDate));
+            pstmt.setDate(2, Date.valueOf(endDate));
+            pstmt.setBigDecimal(3, totalAmount);
+            pstmt.setString(4, status);
+            pstmt.setInt(5, rentalId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[RentalDAO] Error in updateDatesAndStatus: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public List<Rental> getRecentRentals(int limit) {
+        List<Rental> list = new ArrayList<>();
+        String sql = "SELECT * FROM rentals ORDER BY created_at DESC LIMIT ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement s = conn.prepareStatement(sql)) {
+            s.setInt(1, limit);
+            ResultSet rs = s.executeQuery();
+            while (rs.next()) list.add(mapRow(rs));
+        } catch (SQLException e) {
+            System.err.println("[RentalDAO] Error in getRecentRentals: " + e.getMessage());
+        }
+        return list;
+    }
+
+    public int getActiveCount() {
+        return countByStatus("ACTIVE");
+    }
+
+    public int getPendingCount() {
+        return countByStatus("PENDING");
+    }
+
+    public java.math.BigDecimal getTotalRevenue() {
+        String sql = "SELECT COALESCE(SUM(total_amount), 0) FROM rentals WHERE status = 'COMPLETED'";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement s = conn.prepareStatement(sql);
+             ResultSet rs = s.executeQuery()) {
+            if (rs.next()) return rs.getBigDecimal(1);
+        } catch (SQLException e) {
+            System.err.println("[RentalDAO] Error in getTotalRevenue: " + e.getMessage());
+        }
+        return java.math.BigDecimal.ZERO;
+    }
+
+    private int countByStatus(String status) {
+        String sql = "SELECT COUNT(*) FROM rentals WHERE status = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement s = conn.prepareStatement(sql)) {
+            s.setString(1, status);
+            ResultSet rs = s.executeQuery();
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) {
+            System.err.println("[RentalDAO] Error in countByStatus: " + e.getMessage());
+        }
+        return 0;
     }
 }

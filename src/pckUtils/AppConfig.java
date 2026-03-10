@@ -164,8 +164,12 @@ public class AppConfig {
      */
     public static String vehiclePhoto(int vehicleId, String vehicleType) {
         String folder = UPLOAD_VEHICLES + vehicleType.toLowerCase().trim() + "/";
-        String path   = folder + "vehicle_" + vehicleId + ".png";
-        return fileExists(path) ? path : DEFAULT_VEHICLE;
+        // Check for any supported extension
+        for (String ext : new String[]{ "webp", "png", "jpg", "jpeg" }) {
+            String path = folder + "vehicle_" + vehicleId + "." + ext;
+            if (fileExists(path)) return path;
+        }
+        return DEFAULT_VEHICLE;
     }
 
     /**
@@ -188,9 +192,23 @@ public class AppConfig {
     }
 
     public static String saveVehiclePhoto(File sourceFile, int vehicleId, String vehicleType) {
+        String ext  = getExtension(sourceFile.getName());
         String dest = UPLOAD_VEHICLES + vehicleType.toLowerCase().trim()
-                    + "/vehicle_" + vehicleId + ".png";
+                    + "/vehicle_" + vehicleId + "." + ext;
+        // Remove any old file with a different extension
+        for (String old : new String[]{ "webp", "png", "jpg", "jpeg" }) {
+            if (!old.equals(ext)) {
+                File f = new File(UPLOAD_VEHICLES + vehicleType.toLowerCase().trim()
+                    + "/vehicle_" + vehicleId + "." + old);
+                if (f.exists()) f.delete();
+            }
+        }
         return copyFile(sourceFile, dest);
+    }
+
+    private static String getExtension(String filename) {
+        int dot = filename.lastIndexOf('.');
+        return (dot >= 0) ? filename.substring(dot + 1).toLowerCase() : "png";
     }
 
     // =========================================================

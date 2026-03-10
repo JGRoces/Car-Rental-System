@@ -18,8 +18,6 @@ import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 
 import javax.swing.Box;
@@ -32,16 +30,17 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSpinner;
 import javax.swing.JTextField;
+import javax.swing.JPopupMenu;
 import javax.swing.ScrollPaneConstants;
-import javax.swing.SpinnerDateModel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import pckDatabase.CarDAO;
 import pckModels.Car;
+import pckUtils.CalendarPicker;
 import pckUtils.SessionManager;
 
 /**
@@ -136,13 +135,14 @@ public class MakeReservationPanel extends JPanel {
     private JComboBox<String> rentalTypeCombo;
     private JComboBox<String> pickupLocCombo;
     private JComboBox<String> returnLocCombo;
-    private JSpinner          pickupDateSpinner;
-    private JSpinner          returnDateSpinner;
+    private CalendarPicker    pickupDatePicker;
+    private CalendarPicker    returnDatePicker;
     private JComboBox<String> pickupTimeCombo;
     private JComboBox<String> returnTimeCombo;
     private JTextField        licenseNumField;
     private JLabel            licenseFileLabel;
     private File              licenseFile = null;
+    private javax.swing.JCheckBox driverNeededCheckBox;
 
     // Car detail strip labels
     private JLabel carDetailCategory;
@@ -322,14 +322,8 @@ public class MakeReservationPanel extends JPanel {
         JPanel grid = new JPanel(new GridLayout(2, 2, 12, 12));
         grid.setBackground(CLR_WHITE);
 
-        pickupDateSpinner = new JSpinner(new SpinnerDateModel());
-        returnDateSpinner = new JSpinner(new SpinnerDateModel());
-        pickupDateSpinner.setEditor(new JSpinner.DateEditor(pickupDateSpinner, "yyyy-MM-dd"));
-        returnDateSpinner.setEditor(new JSpinner.DateEditor(returnDateSpinner, "yyyy-MM-dd"));
-        styleSpinner(pickupDateSpinner);
-        styleSpinner(returnDateSpinner);
-        pickupDateSpinner.addChangeListener(e -> refreshSummary());
-        returnDateSpinner.addChangeListener(e -> refreshSummary());
+        pickupDatePicker = new CalendarPicker(java.time.LocalDate.now(), this::refreshSummary);
+        returnDatePicker = new CalendarPicker(java.time.LocalDate.now(), this::refreshSummary);
 
         String[] times  = buildTimeOptions();
         pickupTimeCombo = new JComboBox<>(times);
@@ -338,8 +332,8 @@ public class MakeReservationPanel extends JPanel {
         styleCombo(pickupTimeCombo);
         styleCombo(returnTimeCombo);
 
-        grid.add(buildField("Pick-up Date", pickupDateSpinner));
-        grid.add(buildField("Return Date",  returnDateSpinner));
+        grid.add(buildField("Pick-up Date", pickupDatePicker));
+        grid.add(buildField("Return Date",  returnDatePicker));
         grid.add(buildField("Pick-up Time", pickupTimeCombo));
         grid.add(buildField("Return Time",  returnTimeCombo));
         content.add(grid);
@@ -441,10 +435,45 @@ public class MakeReservationPanel extends JPanel {
         grid.add(buildField("License Number", licenseNumField));
         grid.add(buildField("License Photo",  uploadWrap));
 
+        // "Driver needed" checkbox
+        driverNeededCheckBox = new javax.swing.JCheckBox("I need a driver (license not required)");
+        driverNeededCheckBox.setFont(FONT_INPUT);
+        driverNeededCheckBox.setForeground(CLR_BLACK);
+        driverNeededCheckBox.setBackground(CLR_WHITE);
+        driverNeededCheckBox.setFocusPainted(false);
+
+        JPanel checkRow = new JPanel(new BorderLayout());
+        checkRow.setOpaque(false);
+        checkRow.setBorder(new EmptyBorder(0, 0, 10, 0));
+        checkRow.add(driverNeededCheckBox, BorderLayout.WEST);
+
+        driverNeededCheckBox.addActionListener(e -> {
+            boolean needsDriver = driverNeededCheckBox.isSelected();
+            bannerLbl.setText(needsDriver
+                ? "A verified driver will be assigned to your booking by the admin."
+                : "Your license will be verified before approval. Ensure details match exactly.");
+            banner.setBackground(needsDriver ? CLR_YLW_SOFT : CLR_BLUE_SOFT);
+            bannerLbl.setForeground(needsDriver ? CLR_YLW_TEXT : CLR_BLUE_TEXT);
+            licenseNumField.setEnabled(!needsDriver);
+            uploadBtn.setEnabled(!needsDriver);
+            if (needsDriver) {
+                licenseNumField.setText("");
+                licenseFile = null;
+                licenseFileLabel.setText("No file selected");
+                licenseFileLabel.setForeground(CLR_GRAY);
+            }
+            refreshSummary();
+        });
+
+        JPanel topPart = new JPanel(new BorderLayout());
+        topPart.setOpaque(false);
+        topPart.add(checkRow,   BorderLayout.NORTH);
+        topPart.add(bannerWrap, BorderLayout.CENTER);
+
         JPanel inner = new JPanel(new BorderLayout(0, 0));
         inner.setOpaque(false);
-        inner.add(bannerWrap, BorderLayout.NORTH);
-        inner.add(grid,       BorderLayout.CENTER);
+        inner.add(topPart, BorderLayout.NORTH);
+        inner.add(grid,    BorderLayout.CENTER);
 
         RoundedPanel outer = new RoundedPanel(R_CARD, CLR_WHITE);
         outer.setLayout(new BorderLayout());
@@ -685,12 +714,12 @@ public class MakeReservationPanel extends JPanel {
             ? (String) carCombo.getSelectedItem() : "—";
         confCarLbl.setText(carText);
         confTypeLbl.setText((String) rentalTypeCombo.getSelectedItem());
-        confPickupLbl.setText(formatDate(pickupDateSpinner) + "  " + pickupTimeCombo.getSelectedItem());
-        confReturnLbl.setText(formatDate(returnDateSpinner) + "  " + returnTimeCombo.getSelectedItem());
+        confPickupLbl.setText(pickupDatePicker.getFormattedDate() + "  " + pickupTimeCombo.getSelectedItem());
+        confReturnLbl.setText(returnDatePicker.getFormattedDate() + "  " + returnTimeCombo.getSelectedItem());
         confPickupLocLbl.setText((String) pickupLocCombo.getSelectedItem());
         confReturnLocLbl.setText((String) returnLocCombo.getSelectedItem());
-        confLicenseLbl.setText(licenseNumField.getText().trim().isEmpty()
-            ? "—" : licenseNumField.getText().trim());
+        confLicenseLbl.setText(driverNeededCheckBox.isSelected() ? "Driver will be assigned"
+            : licenseNumField.getText().trim().isEmpty() ? "—" : licenseNumField.getText().trim());
         confDurationLbl.setText(computeDurationLabel());
         confRateLbl.setText(getSelectedCarRate());
         confTotalLbl.setText(computeTotal());
@@ -711,10 +740,8 @@ public class MakeReservationPanel extends JPanel {
         }
         Car selectedCar = availableCars.get(idx - 1);
 
-        java.time.LocalDate start = ((java.util.Date) pickupDateSpinner.getValue())
-            .toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
-        java.time.LocalDate end = ((java.util.Date) returnDateSpinner.getValue())
-            .toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+        java.time.LocalDate start = pickupDatePicker.getLocalDate();
+        java.time.LocalDate end   = returnDatePicker.getLocalDate();
 
         pckDatabase.CustomerDAO customerDAO = new pckDatabase.CustomerDAO();
         pckModels.Customer customer = customerDAO.getCustomerByUserId(
@@ -752,12 +779,12 @@ public class MakeReservationPanel extends JPanel {
         if (carCombo.getSelectedIndex() == 0) {
             showError("Please select a car."); return false;
         }
-        if (licenseNumField.getText().trim().isEmpty()) {
+        if (!driverNeededCheckBox.isSelected() && licenseNumField.getText().trim().isEmpty()) {
             showError("Please enter your driver\u2019s license number."); return false;
         }
-        Date pickup = (Date) pickupDateSpinner.getValue();
-        Date ret    = (Date) returnDateSpinner.getValue();
-        if (!ret.after(pickup)) {
+        java.time.LocalDate pickup = pickupDatePicker.getLocalDate();
+        java.time.LocalDate ret    = returnDatePicker.getLocalDate();
+        if (!ret.isAfter(pickup)) {
             showError("Return date must be after the pick-up date."); return false;
         }
         return true;
@@ -776,11 +803,12 @@ public class MakeReservationPanel extends JPanel {
         int idx = carCombo.getSelectedIndex();
         sumCarLbl.setText(idx > 0 ? (String) carCombo.getSelectedItem() : "—");
         sumTypeLbl.setText((String) rentalTypeCombo.getSelectedItem());
-        sumPickupLbl.setText(formatDate(pickupDateSpinner));
-        sumReturnLbl.setText(formatDate(returnDateSpinner));
+        sumPickupLbl.setText(pickupDatePicker.getFormattedDate());
+        sumReturnLbl.setText(returnDatePicker.getFormattedDate());
         sumPickupLocLbl.setText(shortLoc((String) pickupLocCombo.getSelectedItem()));
         sumReturnLocLbl.setText(shortLoc((String) returnLocCombo.getSelectedItem()));
-        sumLicenseLbl.setText(licenseFile != null ? "\u2713 Uploaded" : "—");
+        sumLicenseLbl.setText(driverNeededCheckBox.isSelected() ? "Driver Provided"
+            : licenseFile != null ? "\u2713 Uploaded" : "—");
         sumDurationLbl.setText(computeDurationLabel());
         sumRateLbl.setText(getSelectedCarRate());
         sumTotalLbl.setText(computeTotal());
@@ -796,6 +824,8 @@ public class MakeReservationPanel extends JPanel {
         returnLocCombo.setSelectedIndex(0);
         pickupTimeCombo.setSelectedIndex(0);
         returnTimeCombo.setSelectedItem("05:00 PM");
+        driverNeededCheckBox.setSelected(false);
+        licenseNumField.setEnabled(true);
         licenseNumField.setText("");
         licenseFile = null;
         licenseFileLabel.setText("No file selected");
@@ -810,14 +840,9 @@ public class MakeReservationPanel extends JPanel {
     // ====================================================
     //  COMPUTATION HELPERS
     // ====================================================
-    private String formatDate(JSpinner spinner) {
-        return new SimpleDateFormat("yyyy-MM-dd").format((Date) spinner.getValue());
-    }
-
     private long computeDays() {
-        Date pickup = (Date) pickupDateSpinner.getValue();
-        Date ret    = (Date) returnDateSpinner.getValue();
-        return (ret.getTime() - pickup.getTime()) / (1000L * 60 * 60 * 24);
+        return java.time.temporal.ChronoUnit.DAYS.between(
+            pickupDatePicker.getLocalDate(), returnDatePicker.getLocalDate());
     }
 
     private String computeDurationLabel() {
@@ -1146,16 +1171,6 @@ public class MakeReservationPanel extends JPanel {
         combo.setFont(FONT_INPUT);
         combo.setBackground(CLR_FIELD_BG);
         combo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-    }
-
-    private void styleSpinner(JSpinner spinner) {
-        spinner.setFont(FONT_INPUT);
-        spinner.setBackground(CLR_FIELD_BG);
-        spinner.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-        if (spinner.getEditor() instanceof JSpinner.DefaultEditor ed) {
-            ed.getTextField().setBackground(CLR_FIELD_BG);
-            ed.getTextField().setFont(FONT_INPUT);
-        }
     }
 
     // ====================================================
