@@ -479,15 +479,24 @@ public class VehiclesTab extends JPanel {
         try {
             java.io.File f = new java.io.File(path);
             if (!f.exists()) return null;
-            // Try ImageIO first (jpg/png), fall back to Toolkit for webp
             BufferedImage src = javax.imageio.ImageIO.read(f);
             if (src != null) return src.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+            // Fallback to Toolkit for formats ImageIO cannot handle (e.g. WebP)
             Image img = Toolkit.getDefaultToolkit().createImage(f.getAbsolutePath());
             MediaTracker mt = new MediaTracker(this);
             mt.addImage(img, 0);
-            mt.waitForAll();
+            try {
+                mt.waitForAll();
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                System.err.println("[VehiclesTab] Image load interrupted for: " + path);
+                return null;
+            }
             return (img.getWidth(null) > 0) ? img.getScaledInstance(w, h, Image.SCALE_SMOOTH) : null;
-        } catch (Exception e) { return null; }
+        } catch (java.io.IOException e) {
+            System.err.println("[VehiclesTab] Failed to read image '" + path + "': " + e.getMessage());
+            return null;
+        }
     }
 
     private JLabel buildStatusBadge(String status) {

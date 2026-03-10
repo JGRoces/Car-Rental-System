@@ -189,7 +189,10 @@ public class SettingsPanel extends JPanel {
         try {
             java.sql.Connection conn = DatabaseConnection.getInstance().getConnection();
             return conn != null && !conn.isClosed();
-        } catch (Exception e) { return false; }
+        } catch (java.sql.SQLException e) {
+            System.err.println("[SettingsPanel] DB connection check failed: " + e.getMessage());
+            return false;
+        }
     }
 
     private void onThemeChanged() {

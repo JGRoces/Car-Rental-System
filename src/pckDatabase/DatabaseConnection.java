@@ -6,11 +6,11 @@ import java.sql.SQLException;
 
 public class DatabaseConnection {
 
-    private static final String URL  = "jdbc:mysql://localhost:3306/car_rental_db?autoReconnect=true&useSSL=false";
+    private static final String URL  = "jdbc:mysql://localhost:3306/car_rental_db?autoReconnect=true&useSSL=false&serverTimezone=UTC";
     private static final String USER = "carrentaluser";
     private static final String PASS = "carrentalpass";
 
-    private static Connection connection = null;
+    private static Connection sharedConnection = null;
 
     private DatabaseConnection() {}
 
@@ -20,30 +20,36 @@ public class DatabaseConnection {
 
     public Connection getConnection() {
         try {
-            if (connection == null || connection.isClosed()) {
+            if (sharedConnection == null || sharedConnection.isClosed()) {
                 Class.forName("com.mysql.cj.jdbc.Driver");
-                connection = DriverManager.getConnection(URL, USER, PASS);
-                System.out.println("[DB] Connection established successfully.");
+                sharedConnection = DriverManager.getConnection(URL, USER, PASS);
+                System.out.println("[DB] Connection established.");
             }
+            return sharedConnection;
         } catch (ClassNotFoundException e) {
-            System.err.println("[DB] ERROR: MySQL JDBC Driver not found.");
-            e.printStackTrace();
+            System.err.println("[DB] FATAL: MySQL JDBC Driver not found — ensure mysql-connector-j is on the classpath.");
+            throw new RuntimeException("MySQL JDBC Driver not found.", e);
         } catch (SQLException e) {
-            System.err.println("[DB] ERROR: Could not connect to the database.");
-            e.printStackTrace();
+            System.err.println("[DB] Connection failed or closed — attempting reconnect. Reason: " + e.getMessage());
+            try {
+                sharedConnection = DriverManager.getConnection(URL, USER, PASS);
+                System.out.println("[DB] Reconnected successfully.");
+                return sharedConnection;
+            } catch (SQLException ex) {
+                System.err.println("[DB] FATAL: Reconnect failed — " + ex.getMessage());
+                throw new RuntimeException("Database connection unavailable.", ex);
+            }
         }
-        return connection;
     }
 
     public void closeConnection() {
-        if (connection != null) {
+        if (sharedConnection != null) {
             try {
-                connection.close();
-                connection = null;
+                sharedConnection.close();
+                sharedConnection = null;
                 System.out.println("[DB] Connection closed.");
             } catch (SQLException e) {
-                System.err.println("[DB] ERROR: Failed to close connection.");
-                e.printStackTrace();
+                System.err.println("[DB] Warning: Failed to close connection — " + e.getMessage());
             }
         }
     }

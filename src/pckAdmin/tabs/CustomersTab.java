@@ -47,7 +47,7 @@ public class CustomersTab extends JPanel {
     //  DATA
     // =========================================================
     private void loadData() {
-        customers = customerDAO.getAllCustomers();
+        customers = new CustomerDAO().getAllCustomers();
     }
 
     /** Called by ManagementPanel's global Refresh button */
@@ -129,8 +129,9 @@ public class CustomersTab extends JPanel {
 
     private void populateTable(List<Customer> data) {
         tableModel.setRowCount(0);
+        RentalDAO freshRentalDAO = new RentalDAO();
         for (Customer c : data) {
-            boolean hasActive = rentalDAO.hasActiveRental(c.getCustomerId());
+            boolean hasActive = freshRentalDAO.hasActiveRental(c.getCustomerId());
             String  photo     = AppConfig.customerPhoto(c.getCustomerId());
             tableModel.addRow(new Object[]{
                 hasActive,
@@ -153,8 +154,9 @@ public class CustomersTab extends JPanel {
                 || (c.getPhone() != null && c.getPhone().toLowerCase().contains(q)))
             .toList();
         tableModel.setRowCount(0);
+        RentalDAO freshRentalDAO = new RentalDAO();
         for (Customer c : filtered) {
-            boolean hasActive = rentalDAO.hasActiveRental(c.getCustomerId());
+            boolean hasActive = freshRentalDAO.hasActiveRental(c.getCustomerId());
             String  photo     = AppConfig.customerPhoto(c.getCustomerId());
             tableModel.addRow(new Object[]{
                 hasActive,
@@ -191,7 +193,8 @@ public class CustomersTab extends JPanel {
             g2.drawOval(0, 0, size - 1, size - 1);
             g2.dispose();
             return new ImageIcon(out);
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
+            System.err.println("[CustomersTab] Failed to load photo: " + e.getMessage());
             return null;
         }
     }

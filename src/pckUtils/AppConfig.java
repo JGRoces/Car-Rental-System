@@ -200,7 +200,9 @@ public class AppConfig {
             if (!old.equals(ext)) {
                 File f = new File(UPLOAD_VEHICLES + vehicleType.toLowerCase().trim()
                     + "/vehicle_" + vehicleId + "." + old);
-                if (f.exists()) f.delete();
+                if (f.exists() && !f.delete()) {
+                    System.err.println("[AppConfig] WARNING: Could not delete old vehicle image: " + f.getAbsolutePath());
+                }
             }
         }
         return copyFile(sourceFile, dest);
@@ -233,8 +235,9 @@ public class AppConfig {
                 java.nio.file.StandardCopyOption.REPLACE_EXISTING
             );
             return destPath;
-        } catch (Exception e) {
-            System.err.println("[AppConfig] Failed to copy file: " + e.getMessage());
+        } catch (java.io.IOException e) {
+            System.err.println("[AppConfig] Failed to copy file from '"
+                + source.getAbsolutePath() + "' to '" + destPath + "': " + e.getMessage());
             return null;
         }
     }

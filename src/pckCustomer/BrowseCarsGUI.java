@@ -74,7 +74,7 @@ public class BrowseCarsGUI extends JPanel {
 
     private void loadCars() {
         try { allCars = CarService.getAllCars(); }
-        catch (Exception e) { System.err.println("[BrowseCarsGUI] DB load failed: " + e.getMessage()); allCars = List.of(); }
+        catch (RuntimeException e) { System.err.println("[BrowseCarsGUI] DB load failed: " + e.getMessage()); allCars = List.of(); }
     }
 
     private void initComponents() {
@@ -763,20 +763,32 @@ public class BrowseCarsGUI extends JPanel {
     private BufferedImage loadImageRaw(String filename) {
         if (filename == null || filename.isBlank()) return null;
         java.io.File f = new java.io.File("assets/images/" + filename);
-        if (!f.exists()) { System.err.println("[BrowseCarsGUI] Image not found: " + f.getAbsolutePath()); return null; }
+        if (!f.exists()) {
+            System.err.println("[BrowseCarsGUI] Image not found: " + f.getAbsolutePath());
+            return null;
+        }
         try {
-            // Try ImageIO first (jpg/png), fall back to Toolkit for webp
             BufferedImage img = javax.imageio.ImageIO.read(f);
             if (img != null) return img;
-            java.awt.Image raw = java.awt.Toolkit.getDefaultToolkit().createImage(f.getAbsolutePath());
+            // Fallback to Toolkit for formats ImageIO cannot handle (e.g. WebP)
+            java.awt.Image toolkit = java.awt.Toolkit.getDefaultToolkit().createImage(f.getAbsolutePath());
             java.awt.MediaTracker mt = new java.awt.MediaTracker(this);
-            mt.addImage(raw, 0);
-            mt.waitForAll();
-            if (raw.getWidth(null) <= 0) return null;
-            BufferedImage buf = new BufferedImage(raw.getWidth(null), raw.getHeight(null), BufferedImage.TYPE_INT_ARGB);
-            buf.getGraphics().drawImage(raw, 0, 0, null);
+            mt.addImage(toolkit, 0);
+            try {
+                mt.waitForAll();
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                System.err.println("[BrowseCarsGUI] Image load interrupted for: " + filename);
+                return null;
+            }
+            if (toolkit.getWidth(null) <= 0) return null;
+            BufferedImage buf = new BufferedImage(toolkit.getWidth(null), toolkit.getHeight(null), BufferedImage.TYPE_INT_ARGB);
+            buf.getGraphics().drawImage(toolkit, 0, 0, null);
             return buf;
-        } catch (Exception e) { return null; }
+        } catch (java.io.IOException e) {
+            System.err.println("[BrowseCarsGUI] Failed to read image '" + filename + "': " + e.getMessage());
+            return null;
+        }
     }
 
     private Color parseColor(String colorName) {

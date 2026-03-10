@@ -2,11 +2,14 @@ package pckDriver;
 
 import pckAdmin.AdminDashboardGUI.AdminNavCallback;
 import pckAdmin.shared.AdminUIHelper;
+import pckDatabase.CarDAO;
+import pckDatabase.CustomerDAO;
 import pckDatabase.RentalDAO;
+import pckModels.Car;
+import pckModels.Customer;
 import pckModels.Driver;
 import pckModels.Rental;
 import pckServices.AuthService;
-import pckServices.DriverService;
 import pckUtils.AppConfig;
 import pckUtils.CustomTitleBar;
 import pckUtils.SessionManager;
@@ -248,7 +251,7 @@ public class DriverDashboardGUI extends JFrame {
 
     // ── Overview ──────────────────────────────────────────────
     private JPanel buildOverviewPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout(0, 20));
         panel.setBackground(UIAssets.getBg());
         panel.setBorder(new EmptyBorder(32, 36, 32, 36));
 
@@ -258,11 +261,7 @@ public class DriverDashboardGUI extends JFrame {
             "Here's a summary of your driver account."
         ), BorderLayout.NORTH);
 
-        JPanel body = new JPanel();
-        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
-        body.setOpaque(false);
-
-        // Status card
+        // Status banner
         String status = currentDriver != null ? currentDriver.getStatus() : "UNKNOWN";
         Color statusColor = switch (status) {
             case "VERIFIED" -> UIAssets.CLR_GREEN;
@@ -280,50 +279,47 @@ public class DriverDashboardGUI extends JFrame {
             default         -> "Your account has been rejected. Please contact support.";
         };
 
-        JPanel statusCard = new JPanel(new BorderLayout());
+        JPanel statusCard = new JPanel(new GridLayout(2, 1, 0, 4));
         statusCard.setBackground(statusLight);
         statusCard.setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(statusColor, 1, true),
-            new EmptyBorder(20, 20, 20, 20)
+            new EmptyBorder(14, 20, 14, 20)
         ));
-        statusCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
-        statusCard.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel statusLbl = new JLabel("Account Status: " + status);
         statusLbl.setFont(UIAssets.FONT_H2);
         statusLbl.setForeground(statusColor);
         JLabel statusSubLbl = new JLabel(statusMsg);
         statusSubLbl.setFont(UIAssets.FONT_BODY);
         statusSubLbl.setForeground(statusColor);
-        JPanel statusStack = new JPanel(new GridLayout(2, 1, 0, 4));
-        statusStack.setOpaque(false);
-        statusStack.add(statusLbl); statusStack.add(statusSubLbl);
-        statusCard.add(statusStack, BorderLayout.CENTER);
+        statusCard.add(statusLbl);
+        statusCard.add(statusSubLbl);
 
-        body.add(statusCard);
-        body.add(Box.createVerticalStrut(24));
+        // Stat counts
+        int totalAssignments = 0, activeAssignments = 0, completedAssignments = 0;
+        if (currentDriver != null) {
+            List<Rental> myRentals = new RentalDAO().getRentalsByDriverId(currentDriver.getDriverId());
+            totalAssignments     = myRentals.size();
+            activeAssignments    = (int) myRentals.stream().filter(r -> r.getStatus().equals("ACTIVE")).count();
+            completedAssignments = (int) myRentals.stream().filter(r -> r.getStatus().equals("COMPLETED")).count();
+        }
 
-        // Stats row
         JPanel stats = new JPanel(new GridLayout(1, 3, 16, 0));
         stats.setOpaque(false);
-        stats.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
-        stats.setAlignmentX(Component.LEFT_ALIGNMENT);
+        stats.add(AdminUIHelper.buildStatCard("My Assignments", String.valueOf(totalAssignments),     "Total assigned to me", UIAssets.CLR_BLUE,  UIAssets.CLR_BLUE_LIGHT));
+        stats.add(AdminUIHelper.buildStatCard("Active",         String.valueOf(activeAssignments),    "Currently active",     UIAssets.CLR_GREEN, UIAssets.CLR_GREEN_LIGHT));
+        stats.add(AdminUIHelper.buildStatCard("Completed",      String.valueOf(completedAssignments), "Finished trips",       UIAssets.CLR_BLUE,  UIAssets.CLR_BLUE_LIGHT));
 
-        int totalAssignments = 0;
-        int activeAssignments = 0;
-        if (currentDriver != null) {
-            RentalDAO dao = new RentalDAO();
-            List<Rental> all = dao.getAllRentals();
-            for (Rental r : all) {
-                if (r.getStatus().equals("ACTIVE")) activeAssignments++;
-                totalAssignments++;
-            }
-        }
-        stats.add(AdminUIHelper.buildStatCard("Total Rentals",  String.valueOf(totalAssignments), "In the system",    UIAssets.CLR_BLUE,   UIAssets.CLR_BLUE_LIGHT));
-        stats.add(AdminUIHelper.buildStatCard("Active Rentals", String.valueOf(activeAssignments), "Currently active", UIAssets.CLR_GREEN,  UIAssets.CLR_GREEN_LIGHT));
-        stats.add(AdminUIHelper.buildStatCard("Account Status", status, "Verification status",    statusColor, statusLight));
+        JPanel body = new JPanel(new BorderLayout(0, 20));
+        body.setOpaque(false);
+        body.add(statusCard, BorderLayout.NORTH);
+        body.add(stats,      BorderLayout.CENTER);
 
-        body.add(stats);
-        panel.add(body, BorderLayout.CENTER);
+        // Wrap body in NORTH so stats don't stretch vertically
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(body, BorderLayout.NORTH);
+
+        panel.add(wrapper, BorderLayout.CENTER);
         return panel;
     }
 
@@ -333,19 +329,34 @@ public class DriverDashboardGUI extends JFrame {
         panel.setBackground(UIAssets.getBg());
         panel.setBorder(new EmptyBorder(32, 36, 32, 36));
         panel.add(AdminUIHelper.buildPageHeader("My Assignments",
-            "View all rental assignments in the system."), BorderLayout.NORTH);
+            "Rentals assigned to you."), BorderLayout.NORTH);
 
-        String[] cols = { "Rental ID", "Customer ID", "Car ID", "Start Date", "End Date", "Amount", "Status" };
-        RentalDAO dao = new RentalDAO();
-        List<Rental> rentals = dao.getAllRentals();
-        Object[][] rows = new Object[rentals.size()][];
-        for (int i = 0; i < rentals.size(); i++) {
-            Rental r = rentals.get(i);
-            rows[i] = new Object[]{ r.getRentalId(), r.getCustomerId(), r.getCarId(),
-                r.getStartDate(), r.getEndDate(),
-                "\u20b1" + String.format("%,.2f", r.getTotalAmount()), r.getStatus() };
+        String[] cols = { "Rental #", "Customer", "Vehicle", "Start Date", "End Date", "Total (₱)", "Status" };
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        if (currentDriver != null) {
+            List<Rental> rentals = new RentalDAO().getRentalsByDriverId(currentDriver.getDriverId());
+            CustomerDAO customerDAO = new CustomerDAO();
+            CarDAO      carDAO      = new CarDAO();
+            for (Rental r : rentals) {
+                Customer cust = customerDAO.getCustomerById(r.getCustomerId());
+                String custName = cust != null ? cust.getFullName() : "Customer #" + r.getCustomerId();
+                Car car = carDAO.getCarById(r.getCarId());
+                String carName = car != null
+                    ? car.getBrand() + " " + car.getModel() + " (" + car.getPlateNumber() + ")"
+                    : "Car #" + r.getCarId();
+                model.addRow(new Object[]{
+                    r.getRentalId(), custName, carName,
+                    r.getStartDate(), r.getEndDate(),
+                    String.format("%,.2f", r.getTotalAmount()), r.getStatus()
+                });
+            }
         }
-        JTable table = AdminUIHelper.buildStyledTable(cols, rows);
+
+        JTable table = AdminUIHelper.buildStyledTable(cols, null);
+        table.setModel(model);
         table.getColumnModel().getColumn(6).setCellRenderer(new AdminUIHelper.StatusBadgeRenderer());
         panel.add(AdminUIHelper.buildTableScrollPane(table), BorderLayout.CENTER);
         return panel;

@@ -181,7 +181,9 @@ public class RemoveVehiclePanel extends JPanel {
                     Image scaled = src.getScaledInstance(
                         getWidth(), getHeight(), Image.SCALE_SMOOTH);
                     g.drawImage(scaled, 0, 0, null);
-                } catch (Exception ignored) {}
+                } catch (java.io.IOException ex) {
+                    System.err.println("[RemoveVehiclePanel] Failed to load car image: " + ex.getMessage());
+                }
             }
             @Override public Dimension getPreferredSize() { return new Dimension(90, 76); }
             @Override public Dimension getMinimumSize()   { return new Dimension(90, 76); }

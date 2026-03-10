@@ -15,6 +15,10 @@ public class DriverDAO {
             VALUES (?, ?, ?, ?, ?, 'PENDING', ?)
             """;
         Connection connection = DatabaseConnection.getInstance().getConnection();
+        if (connection == null) {
+            System.err.println("[DriverDAO] ERROR: createAccount failed — no DB connection.");
+            return null;
+        }
         try {
             connection.setAutoCommit(false);
             int userId;
@@ -46,12 +50,15 @@ public class DriverDAO {
             System.out.println("[DriverDAO] Account created — userId=" + userId + ", driverId=" + driverId + " | Status: PENDING");
             return driver;
         } catch (SQLException e) {
-            System.err.println("[DriverDAO] ERROR: createAccount failed — rolling back.");
-            e.printStackTrace();
-            try { connection.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            System.err.println("[DriverDAO] ERROR: createAccount failed — rolling back. " + e.getMessage());
+            try { connection.rollback(); } catch (SQLException ex) {
+                System.err.println("[DriverDAO] ERROR: Rollback failed — " + ex.getMessage());
+            }
             return null;
         } finally {
-            try { connection.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
+            try { connection.setAutoCommit(true); } catch (SQLException e) {
+                System.err.println("[DriverDAO] WARNING: Could not reset autoCommit — " + e.getMessage());
+            }
         }
     }
 
@@ -179,10 +186,13 @@ public class DriverDAO {
     }
 
     private String convertDateToSql(String display) {
+        if (display == null || display.isBlank()) return null;
         try {
             String[] parts = display.split("/");
+            if (parts.length != 3) throw new IllegalArgumentException("Expected MM/DD/YYYY, got: " + display);
             return parts[2] + "-" + parts[0] + "-" + parts[1];
         } catch (Exception e) {
+            System.err.println("[DriverDAO] WARNING: Could not parse license expiry date '" + display + "' — using as-is. " + e.getMessage());
             return display;
         }
     }

@@ -44,6 +44,7 @@ public class RentalDAO {
             System.out.println("[RentalDAO] getAllRentals() → " + rentals.size() + " rows");
         } catch (SQLException e) {
             System.err.println("[RentalDAO] Error in getAllRentals(): " + e.getMessage());
+            e.printStackTrace();
         }
         return rentals;
     }
@@ -61,6 +62,7 @@ public class RentalDAO {
             return pstmt.executeQuery().next();
         } catch (SQLException e) {
             System.err.println("[RentalDAO] Error in hasActiveRental(): " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -79,6 +81,7 @@ public class RentalDAO {
             while (rs.next()) rentals.add(mapRow(rs));
         } catch (SQLException e) {
             System.err.println("[RentalDAO] Error fetching rentals for customer: " + e.getMessage());
+            e.printStackTrace();
         }
         return rentals;
     }
@@ -109,6 +112,7 @@ public class RentalDAO {
             }
         } catch (SQLException e) {
             System.err.println("[RentalDAO] Error creating rental: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -142,6 +146,21 @@ public class RentalDAO {
         }
     }
 
+    public List<Rental> getRentalsByDriverId(int driverId) {
+        List<Rental> list = new ArrayList<>();
+        String sql = "SELECT * FROM rentals WHERE driver_id = ? ORDER BY start_date DESC";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, driverId);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) list.add(mapRow(rs));
+        } catch (SQLException e) {
+            System.err.println("[RentalDAO] Error in getRentalsByDriverId: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return list;
+    }
+
     public boolean updateDatesAndStatus(int rentalId, java.time.LocalDate startDate,
             java.time.LocalDate endDate, java.math.BigDecimal totalAmount, String status) {
         String sql = "UPDATE rentals SET start_date=?, end_date=?, total_amount=?, status=? WHERE rental_id=?";
@@ -169,6 +188,7 @@ public class RentalDAO {
             while (rs.next()) list.add(mapRow(rs));
         } catch (SQLException e) {
             System.err.println("[RentalDAO] Error in getRecentRentals: " + e.getMessage());
+            e.printStackTrace();
         }
         return list;
     }
@@ -189,6 +209,7 @@ public class RentalDAO {
             if (rs.next()) return rs.getBigDecimal(1);
         } catch (SQLException e) {
             System.err.println("[RentalDAO] Error in getTotalRevenue: " + e.getMessage());
+            e.printStackTrace();
         }
         return java.math.BigDecimal.ZERO;
     }

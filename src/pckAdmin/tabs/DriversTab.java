@@ -38,7 +38,8 @@ import java.util.List;
  */
 public class DriversTab extends JPanel {
 
-    private final DriverDAO driverDAO = new DriverDAO();
+    // Returns a fresh DriverDAO to avoid stale connection issues
+    private DriverDAO dao() { return new DriverDAO(); }
 
     private DefaultTableModel pendingModel;
     private DefaultTableModel verifiedModel;
@@ -67,20 +68,27 @@ public class DriversTab extends JPanel {
         setBorder(new EmptyBorder(24, 28, 24, 28));
         loadData();
         build();
+        // Reload data each time this tab becomes visible
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentShown(java.awt.event.ComponentEvent e) {
+                refresh();
+            }
+        });
     }
 
     // =========================================================
     //  DATA
     // =========================================================
     private void loadData() {
-        allPending  = driverDAO.getPendingDrivers();
-        allVerified = driverDAO.getDriversByStatus(Driver.STATUS_VERIFIED);
+        allPending  = dao().getPendingDrivers();
+        allVerified = dao().getDriversByStatus(Driver.STATUS_VERIFIED);
     }
 
-    /** Called by ManagementPanel's global Refresh button */
+    /** Called by ManagementPanel's global Refresh button and on tab selection */
     public void refresh() {
         loadData();
-        applySearch();
+        populatePending(allPending);
+        populateVerified(allVerified);
         updateCounts();
     }
 
@@ -227,7 +235,7 @@ public class DriversTab extends JPanel {
                           "License Expiry", "Submitted", "Actions" };
 
         pendingModel = new DefaultTableModel(cols, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+            @Override public boolean isCellEditable(int r, int c) { return c == COL_ACTIONS; }
             @Override public Class<?> getColumnClass(int c) {
                 return c == COL_PHOTO ? ImageIcon.class : Object.class;
             }
@@ -331,20 +339,21 @@ public class DriversTab extends JPanel {
     //  VERIFY / REJECT ACTIONS
     // =========================================================
     private void verifyDriver(int driverId, int pendingRow) {
-        boolean ok = driverDAO.updateStatus(driverId, Driver.STATUS_VERIFIED);
+        if (driverId <= 0) {
+            JOptionPane.showMessageDialog(this, "Invalid driver ID: " + driverId, "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        boolean ok = dao().updateStatus(driverId, Driver.STATUS_VERIFIED);
         if (ok) {
-            pendingModel.removeRow(pendingRow);
+            if (pendingRow >= 0 && pendingRow < pendingModel.getRowCount())
+                pendingModel.removeRow(pendingRow);
             allPending.removeIf(d -> d.getDriverId() == driverId);
-            allVerified = driverDAO.getDriversByStatus(Driver.STATUS_VERIFIED);
+            allVerified = dao().getDriversByStatus(Driver.STATUS_VERIFIED);
             populateVerified(allVerified);
             updateCounts();
-            JOptionPane.showMessageDialog(this,
-                "Driver verified successfully.", "Verified",
-                JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Driver verified successfully.", "Verified", JOptionPane.INFORMATION_MESSAGE);
         } else {
-            JOptionPane.showMessageDialog(this,
-                "Failed to verify driver. Please try again.", "Error",
-                JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Failed to verify driver ID " + driverId + ". Please try again.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -354,7 +363,7 @@ public class DriversTab extends JPanel {
             "Reject Driver", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm != JOptionPane.YES_OPTION) return;
 
-        boolean ok = driverDAO.updateStatus(driverId, Driver.STATUS_REJECTED);
+        boolean ok = dao().updateStatus(driverId, Driver.STATUS_REJECTED);
         if (ok) {
             pendingModel.removeRow(pendingRow);
             allPending.removeIf(d -> d.getDriverId() == driverId);
@@ -430,7 +439,10 @@ public class DriversTab extends JPanel {
             g2.drawOval(0, 0, size - 1, size - 1);
             g2.dispose();
             return new ImageIcon(out);
-        } catch (Exception e) { return null; }
+        } catch (java.io.IOException e) {
+            System.err.println("[DriversTab] Failed to load photo: " + e.getMessage());
+            return null;
+        }
     }
 
     // =========================================================
@@ -503,14 +515,22 @@ public class DriversTab extends JPanel {
             panel.add(rejectBtn);
 
             verifyBtn.addActionListener(e -> {
-                int driverId = (int) pendingModel.getValueAt(editingRow, COL_ACTIONS);
-                stopCellEditing();
-                verifyDriver(driverId, editingRow);
+                int row = editingRow;
+                if (row < 0 || row >= pendingModel.getRowCount()) return;
+                Object val = pendingModel.getValueAt(row, COL_ACTIONS);
+                if (!(val instanceof Integer)) return;
+                int driverId = (int) val;
+                fireEditingStopped();
+                verifyDriver(driverId, row);
             });
             rejectBtn.addActionListener(e -> {
-                int driverId = (int) pendingModel.getValueAt(editingRow, COL_ACTIONS);
-                stopCellEditing();
-                rejectDriver(driverId, editingRow);
+                int row = editingRow;
+                if (row < 0 || row >= pendingModel.getRowCount()) return;
+                Object val = pendingModel.getValueAt(row, COL_ACTIONS);
+                if (!(val instanceof Integer)) return;
+                int driverId = (int) val;
+                fireEditingStopped();
+                rejectDriver(driverId, row);
             });
         }
 

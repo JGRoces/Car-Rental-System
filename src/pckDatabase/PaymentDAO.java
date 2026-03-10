@@ -54,6 +54,7 @@ public class PaymentDAO {
             while (rs.next()) list.add(mapRow(rs));
         } catch (SQLException e) {
             System.err.println("[PaymentDAO] ERROR in getAllPayments(): " + e.getMessage());
+            e.printStackTrace();
         }
         return list;
     }
@@ -71,6 +72,7 @@ public class PaymentDAO {
             while (rs.next()) list.add(mapRow(rs));
         } catch (SQLException e) {
             System.err.println("[PaymentDAO] ERROR in getPaymentsByRental(): " + e.getMessage());
+            e.printStackTrace();
         }
         return list;
     }
@@ -87,6 +89,7 @@ public class PaymentDAO {
             while (rs.next()) list.add(mapRow(rs));
         } catch (SQLException e) {
             System.err.println("[PaymentDAO] ERROR in getPendingPayments(): " + e.getMessage());
+            e.printStackTrace();
         }
         return list;
     }
@@ -132,6 +135,7 @@ public class PaymentDAO {
             if (rs.next()) return rs.getBigDecimal(1);
         } catch (SQLException e) {
             System.err.println("[PaymentDAO] ERROR in getTotalRevenue(): " + e.getMessage());
+            e.printStackTrace();
         }
         return BigDecimal.ZERO;
     }

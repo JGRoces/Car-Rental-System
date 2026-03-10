@@ -318,8 +318,9 @@ public class CustomerSignUpGUI extends JFrame {
             ImageIcon raw    = new ImageIcon(path);
             Image    scaled  = raw.getImage().getScaledInstance(60, 60, Image.SCALE_SMOOTH);
             photoLabel.setIcon(new ImageIcon(scaled));
-        } catch (Exception ignored) {
-            photoLabel.setIcon(null); // fallback: gray circle from paintComponent
+        } catch (Exception e) {
+            System.err.println("[CustomerSignUpGUI] Photo preview failed: " + e.getMessage());
+            photoLabel.setIcon(null);
         }
         photoLabel.repaint();
     }
