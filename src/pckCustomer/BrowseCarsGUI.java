@@ -8,6 +8,7 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
@@ -17,17 +18,17 @@ import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.math.BigDecimal;
 import java.util.List;
 
-import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JViewport;
@@ -51,6 +52,7 @@ public class BrowseCarsGUI extends JPanel {
     private Car       selectedCar;
     private boolean   detailVisible = false;
     private java.util.Map<String, String> activeFilters = new java.util.LinkedHashMap<>();
+    private java.util.Map<String, javax.swing.JButton> filterPillButtons = new java.util.LinkedHashMap<>();
 
     private JLabel     resultsCountLabel;
     private JPanel     cardGrid;
@@ -103,32 +105,70 @@ public class BrowseCarsGUI extends JPanel {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(UIAssets.getBg());
         header.setAlignmentX(Component.LEFT_ALIGNMENT);
-        header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
+        header.setMinimumSize(new Dimension(0, 120));
+        header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
 
         JPanel titleBlock = new JPanel();
         titleBlock.setLayout(new BoxLayout(titleBlock, BoxLayout.Y_AXIS));
         titleBlock.setBackground(UIAssets.getBg());
+        titleBlock.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel title = new JLabel("Browse Cars");
         title.setFont(UIAssets.FONT_TITLE);
         title.setForeground(UIAssets.getTextPrimary());
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         resultsCountLabel = new JLabel(allCars.size() + " cars found");
         resultsCountLabel.setFont(UIAssets.FONT_SUBTITLE);
         resultsCountLabel.setForeground(UIAssets.getTextSecondary());
+        resultsCountLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         titleBlock.add(title);
+        titleBlock.add(Box.createVerticalStrut(4));
         titleBlock.add(resultsCountLabel);
+        titleBlock.add(Box.createVerticalStrut(8));
 
-        chipRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
-        chipRow.setBorder(new EmptyBorder(8, 0, 0, 0));
-        chipRow.setBackground(UIAssets.getBg());
-        chipRow.setVisible(false);
-
-        JPanel left = new JPanel(new BorderLayout());
-        left.setBackground(UIAssets.getBg());
-        left.add(titleBlock, BorderLayout.NORTH);
-        left.add(chipRow,    BorderLayout.CENTER);
+        JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        filterRow.setBackground(UIAssets.getBg());
+        filterRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        filterPillButtons.clear();
+        
+        JPanel typePanel = buildFilterCombo("Type",
+            new String[]{ "All Types", "Sedan", "SUV", "MPV", "Van", "Pickup", "Coupe", "Minivan", "Truck" },
+            v -> { if (v.equals("All Types")) { activeFilters.remove("Type"); applyFilters(); } else filterByType(v); });
+        filterPillButtons.put("Type", findPillButton(typePanel));
+        filterRow.add(typePanel);
+        
+        JPanel brandPanel = buildFilterCombo("Brand",
+            buildBrandOptions(),
+            v -> { if (v.equals("All Brands")) { activeFilters.remove("Brand"); applyFilters(); } else filterByBrand(v); });
+        filterPillButtons.put("Brand", findPillButton(brandPanel));
+        filterRow.add(brandPanel);
+        
+        JPanel transPanel = buildFilterCombo("Transmission",
+            new String[]{ "All", "Automatic", "Manual", "CVT" },
+            v -> { if (v.equals("All")) { activeFilters.remove("Transmission"); applyFilters(); } else filterByTransmission(v); });
+        filterPillButtons.put("Transmission", findPillButton(transPanel));
+        filterRow.add(transPanel);
+        
+        JPanel fuelPanel = buildFilterCombo("Fuel",
+            new String[]{ "All Fuels", "Gasoline", "Diesel", "Hybrid", "Electric" },
+            v -> { if (v.equals("All Fuels")) { activeFilters.remove("Fuel Type"); applyFilters(); } else filterByFuelType(v); });
+        filterPillButtons.put("Fuel", findPillButton(fuelPanel));
+        filterRow.add(fuelPanel);
+        
+        JPanel pricePanel = buildFilterCombo("Price",
+            new String[]{ "All Prices", "Under \u20B11,000", "\u20B11,000 \u2013 \u20B12,000", "Above \u20B12,000" },
+            v -> { if (v.equals("All Prices")) { activeFilters.remove("Price"); applyFilters(); } else filterByPriceRange(v); });
+        filterPillButtons.put("Price", findPillButton(pricePanel));
+        filterRow.add(pricePanel);
+        
+        JPanel colorPanel = buildFilterCombo("Color",
+            buildColorOptions(),
+            v -> { if (v.equals("All Colors")) { activeFilters.remove("Color"); applyFilters(); } else filterByColor(v); });
+        filterPillButtons.put("Color", findPillButton(colorPanel));
+        filterRow.add(colorPanel);
 
         JButton refreshBtn = new JButton("Refresh") {
             @Override protected void paintComponent(Graphics g) {
@@ -136,8 +176,22 @@ public class BrowseCarsGUI extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getBackground());
                 g2.fill(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
+                g2.setColor(UIAssets.CLR_BLUE_LIGHT.darker());
+                g2.setStroke(new BasicStroke(1));
+                g2.draw(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth() - 1, getHeight() - 1, 8, 8));
                 g2.dispose();
-                super.paintComponent(g);
+                g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setFont(getFont());
+                g2.setColor(getForeground());
+                FontMetrics fm = g2.getFontMetrics();
+                String text = getText();
+                int textWidth = fm.stringWidth(text);
+                int textHeight = fm.getAscent();
+                int x = (getWidth() - textWidth) / 2;
+                int y = (getHeight() + textHeight) / 2 - 2;
+                g2.drawString(text, x, y);
+                g2.dispose();
             }
         };
         refreshBtn.setFont(UIAssets.FONT_H3);
@@ -160,39 +214,168 @@ public class BrowseCarsGUI extends JPanel {
             refreshBtn.setEnabled(true);
         });
 
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        right.setBackground(UIAssets.getBg());
-        right.add(buildFilterCombo("Type",
-            new String[]{ "All Types", "Sedan", "SUV", "MPV", "Van", "Pickup", "Coupe", "Minivan", "Truck" },
-            v -> { if (v.equals("All Types")) { activeFilters.remove("Type"); applyFilters(); } else filterByType(v); }));
-        right.add(buildFilterCombo("Brand",
-            new String[]{ "All Brands", "Toyota", "Honda", "Mitsubishi", "BYD", "Ford", "Nissan", "Isuzu", "Mazda", "Kia" },
-            v -> { if (v.equals("All Brands")) { activeFilters.remove("Brand"); applyFilters(); } else filterByBrand(v); }));
-        right.add(buildFilterCombo("Transmission",
-            new String[]{ "All", "Automatic", "Manual", "CVT" },
-            v -> { if (v.equals("All")) { activeFilters.remove("Transmission"); applyFilters(); } else filterByTransmission(v); }));
-        right.add(buildFilterCombo("Fuel",
-            new String[]{ "All Fuels", "Gasoline", "Diesel", "Hybrid", "Electric" },
-            v -> { if (v.equals("All Fuels")) { activeFilters.remove("Fuel Type"); applyFilters(); } else filterByFuelType(v); }));
-        right.add(buildFilterCombo("Price",
-            new String[]{ "All Prices", "Under \u20B11,000", "\u20B11,000\u2013\u20B12,000", "Above \u20B12,000" },
-            v -> { if (v.equals("All Prices")) { activeFilters.remove("Price"); applyFilters(); } else filterByPriceRange(v); }));
-        right.add(refreshBtn);
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.setBackground(UIAssets.getBg());
+        JPanel refreshWrapper = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
+        refreshWrapper.setBackground(UIAssets.getBg());
+        refreshWrapper.add(refreshBtn);
+        rightPanel.add(refreshWrapper, BorderLayout.NORTH);
+        rightPanel.setBorder(new EmptyBorder(0, 0, 0, 10));
+
+        chipRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        chipRow.setBorder(new EmptyBorder(8, 0, 0, 0));
+        chipRow.setBackground(UIAssets.getBg());
+        chipRow.setVisible(false);
+        chipRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel leftTop = new JPanel();
+        leftTop.setLayout(new BoxLayout(leftTop, BoxLayout.Y_AXIS));
+        leftTop.setBackground(UIAssets.getBg());
+        leftTop.setAlignmentX(Component.LEFT_ALIGNMENT);
+        leftTop.add(titleBlock);
+        leftTop.add(filterRow);
+        leftTop.add(chipRow);
+
+        JPanel left = new JPanel(new BorderLayout());
+        left.setBackground(UIAssets.getBg());
+        left.setAlignmentX(Component.LEFT_ALIGNMENT);
+        left.add(leftTop, BorderLayout.NORTH);
+
         header.add(left, BorderLayout.WEST);
-        header.add(right, BorderLayout.EAST);
+        
+        header.add(rightPanel, BorderLayout.EAST);
+
         return header;
     }
 
-    private javax.swing.JComboBox<String> buildFilterCombo(String label, String[] options, java.util.function.Consumer<String> onSelect) {
-        javax.swing.JComboBox<String> combo = new javax.swing.JComboBox<>(options);
-        combo.setFont(UIAssets.FONT_SMALL);
-        combo.setPreferredSize(new Dimension(140, 34));
-        combo.setToolTipText("Filter by " + label);
-        combo.addActionListener(e -> {
-            String selected = (String) combo.getSelectedItem();
-            if (selected != null) onSelect.accept(selected);
+    private String getDefaultFilterText(String category) {
+        switch (category) {
+            case "Type": return "All Types";
+            case "Brand": return "All Brands";
+            case "Transmission": return "All";
+            case "Fuel": return "All Fuels";
+            case "Price": return "All Prices";
+            case "Color": return "All Colors";
+            default: return null;
+        }
+    }
+
+    private String[] buildBrandOptions() {
+        try {
+            List<String> brands = pckServices.CarService.getDistinctBrands();
+            if (brands == null || brands.isEmpty()) {
+                return new String[]{ "All Brands", "Toyota", "Honda", "Mitsubishi", "BYD", "Ford", "Nissan", "Isuzu", "Mazda", "Kia" };
+            }
+            String[] options = new String[brands.size() + 1];
+            options[0] = "All Brands";
+            for (int i = 0; i < brands.size(); i++) {
+                options[i + 1] = brands.get(i);
+            }
+            return options;
+        } catch (Exception e) {
+            System.err.println("[BrowseCarsGUI] Failed to load brands: " + e.getMessage());
+            return new String[]{ "All Brands", "Toyota", "Honda", "Mitsubishi", "BYD", "Ford", "Nissan", "Isuzu", "Mazda", "Kia" };
+        }
+    }
+
+    private String[] buildColorOptions() {
+        try {
+            List<String> colors = pckServices.CarService.getDistinctColors();
+            if (colors == null || colors.isEmpty()) {
+                return new String[]{ "All Colors" };
+            }
+            String[] options = new String[colors.size() + 1];
+            options[0] = "All Colors";
+            for (int i = 0; i < colors.size(); i++) {
+                options[i + 1] = colors.get(i);
+            }
+            return options;
+        } catch (Exception e) {
+            System.err.println("[BrowseCarsGUI] Failed to load colors: " + e.getMessage());
+            return new String[]{ "All Colors" };
+        }
+    }
+
+    private javax.swing.JButton findPillButton(JPanel container) {
+        if (container.getComponentCount() > 0 && container.getComponent(0) instanceof JButton) {
+            return (JButton) container.getComponent(0);
+        }
+        return null;
+    }
+
+    private javax.swing.JPanel buildFilterCombo(String label, String[] options, java.util.function.Consumer<String> onSelect) {
+        JPanel container = new JPanel(new BorderLayout(0, 0));
+        container.setOpaque(false);
+
+        JButton pillBtn = new JButton(options[0] + "  ▼") {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 17, 17);
+                g2.setColor(UIAssets.getBorder());
+                g2.setStroke(new BasicStroke(1));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 17, 17);
+                g2.dispose();
+                g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setFont(getFont());
+                g2.setColor(getForeground());
+                FontMetrics fm = g2.getFontMetrics();
+                int textWidth = fm.stringWidth(getText());
+                int textHeight = fm.getAscent();
+                int x = (getWidth() - textWidth) / 2;
+                int y = (getHeight() + textHeight) / 2 - 2;
+                g2.drawString(getText(), x, y);
+                g2.dispose();
+            }
+        };
+        pillBtn.setFont(UIAssets.FONT_SMALL);
+        pillBtn.setForeground(UIAssets.getTextSecondary());
+        pillBtn.setBackground(UIAssets.getSurface());
+        pillBtn.setBorderPainted(false);
+        pillBtn.setContentAreaFilled(false);
+        pillBtn.setFocusPainted(false);
+        pillBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        pillBtn.setPreferredSize(new Dimension(135, 34));
+
+        JPopupMenu popup = new JPopupMenu();
+        popup.setBorder(BorderFactory.createLineBorder(UIAssets.getBorder(), 1));
+        popup.setBackground(UIAssets.getSurface());
+
+        for (String option : options) {
+            JMenuItem item = new JMenuItem(option) {
+                @Override protected void paintComponent(Graphics g) {
+                    if (getModel().isArmed() || getModel().isSelected()) {
+                        Graphics2D g2 = (Graphics2D) g.create();
+                        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        g2.setColor(UIAssets.CLR_BLUE_LIGHT);
+                        g2.fillRect(0, 0, getWidth(), getHeight());
+                        g2.dispose();
+                    }
+                    super.paintComponent(g);
+                }
+            };
+            item.setFont(UIAssets.FONT_SMALL);
+            item.setForeground(UIAssets.getTextPrimary());
+            item.setBackground(UIAssets.getSurface());
+            item.setOpaque(true);
+            item.addActionListener(e -> {
+                pillBtn.setText(option + "  ▼");
+                onSelect.accept(option);
+                popup.setVisible(false);
+            });
+            popup.add(item);
+        }
+
+        pillBtn.addActionListener(e -> {
+            Dimension popupSize = new Dimension(pillBtn.getWidth(), options.length * 28);
+            popup.setPopupSize(popupSize);
+            popup.show(pillBtn, 0, pillBtn.getHeight());
         });
-        return combo;
+
+        container.add(pillBtn, BorderLayout.CENTER);
+        return container;
     }
 
     private JPanel buildSearchBar() {
@@ -247,7 +430,11 @@ public class BrowseCarsGUI extends JPanel {
             public void changedUpdate(javax.swing.event.DocumentEvent e) { runSearch(); }
             private void runSearch() {
                 String text = searchField.getText().trim();
-                if (text.equals("Search cars...")) return;
+                if (text.isEmpty() || text.equals("Search cars...")) {
+                    populateGrid(allCars);
+                    closeDetailIfOpen();
+                    return;
+                }
                 filterCards(text);
             }
         });
@@ -264,20 +451,20 @@ public class BrowseCarsGUI extends JPanel {
         cardGrid.setBorder(new EmptyBorder(4, 0, 4, 0));
         populateGrid(allCars);
 
-        JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.setOpaque(true);
-        wrapper.setBackground(UIAssets.getBg());
-        wrapper.add(cardGrid, BorderLayout.NORTH);
-
-        JScrollPane scroll = new JScrollPane(wrapper);
+        // Scroll cardGrid directly — eliminates the empty wrapper region that caused
+        // ghost images. BACKINGSTORE_SCROLL_MODE keeps an off-screen copy of the full
+        // scroll content and repaints every newly-revealed pixel from it, so no stale
+        // image pixels ever appear at the top or bottom when scrolling.
+        JScrollPane scroll = new JScrollPane(cardGrid);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.setViewportBorder(null);
         scroll.getViewport().setOpaque(true);
         scroll.getViewport().setBackground(UIAssets.getBg());
         scroll.setOpaque(true);
+        scroll.setBackground(UIAssets.getBg());
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scroll.getViewport().setScrollMode(JViewport.SIMPLE_SCROLL_MODE);
+        scroll.getViewport().setScrollMode(JViewport.BACKINGSTORE_SCROLL_MODE);
         return scroll;
     }
 
@@ -352,19 +539,20 @@ public class BrowseCarsGUI extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
                 g2.setColor(UIAssets.getBgSecondary());
-                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
                 if (cardImg != null) {
                     int pw = getWidth(), ph = 140;
                     int iw = cardImg.getWidth(), ih = cardImg.getHeight();
                     double scale = Math.max((double) pw / iw, (double) ph / ih);
                     int drawW = (int)(iw * scale), drawH = (int)(ih * scale);
-                    g2.setClip(0, 0, getWidth(), 140);
+                    java.awt.geom.RoundRectangle2D clip = new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), 140, 12, 12);
+                    g2.setClip(clip);
                     g2.drawImage(cardImg, (pw - drawW) / 2, (ph - drawH) / 2, drawW, drawH, null);
                 }
                 g2.dispose();
             }
         };
-        imgArea.setOpaque(true);
+        imgArea.setOpaque(false);
         imgArea.setPreferredSize(new Dimension(0, 140));
         if (cardImg == null) imgArea.add(buildCarEmoji(car.getCategory()), BorderLayout.CENTER);
 
@@ -833,6 +1021,7 @@ public class BrowseCarsGUI extends JPanel {
     public void filterByPriceRange(String range)       { activeFilters.put("Price",        range);    applyFilters(); }
     public void filterByTransmission(String t)         { activeFilters.put("Transmission", t);        applyFilters(); }
     public void filterByFuelType(String fuelType)      { activeFilters.put("Fuel Type",    fuelType); applyFilters(); }
+    public void filterByColor(String color)              { activeFilters.put("Color",        color);     applyFilters(); }
     public void showAll()                              { activeFilters.clear();                       applyFilters(); }
     public String getActiveFilterForCategory(String c) { return activeFilters.get(c);                               }
     public String getActiveFilterValue()               { return activeFilters.isEmpty() ? null : activeFilters.values().iterator().next(); }
@@ -846,6 +1035,7 @@ public class BrowseCarsGUI extends JPanel {
                     case "Price"        -> matchesPriceRange(c.getDailyRate(), f.getValue());
                     case "Transmission" -> c.getTransmission().equalsIgnoreCase(f.getValue());
                     case "Fuel Type"    -> c.getFuelType() != null && c.getFuelType().equalsIgnoreCase(f.getValue());
+                    case "Color"        -> c.getColor() != null && c.getColor().equalsIgnoreCase(f.getValue());
                     default             -> true;
                 };
                 if (!match) return false;
@@ -858,8 +1048,54 @@ public class BrowseCarsGUI extends JPanel {
     }
 
     private void rebuildChipRow() {
-        // Chip row disabled — filters shown in combos instead
-        chipRow.setVisible(false);
+        chipRow.removeAll();
+        if (activeFilters.isEmpty()) {
+            chipRow.setVisible(false);
+            return;
+        }
+        chipRow.setVisible(true);
+        
+        for (java.util.Map.Entry<String, String> entry : activeFilters.entrySet()) {
+            JPanel chip = buildChip(entry.getKey(), entry.getValue());
+            chipRow.add(chip);
+        }
+        
+        if (activeFilters.size() >= 1) {
+            JButton clearAllBtn = new JButton("Clear All  ×") {
+                @Override protected void paintComponent(Graphics g) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(getBackground());
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+                    g2.dispose();
+                    super.paintComponent(g);
+                }
+            };
+            clearAllBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            clearAllBtn.setForeground(UIAssets.CLR_RED);
+            clearAllBtn.setBackground(UIAssets.CLR_RED_LIGHT);
+            clearAllBtn.setBorderPainted(false);
+            clearAllBtn.setContentAreaFilled(false);
+            clearAllBtn.setFocusPainted(false);
+            clearAllBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            clearAllBtn.setPreferredSize(new Dimension(95, 26));
+            clearAllBtn.addActionListener(e -> {
+                for (java.util.Map.Entry<String, JButton> entry : filterPillButtons.entrySet()) {
+                    JButton btn = entry.getValue();
+                    String category = entry.getKey();
+                    String defaultText = getDefaultFilterText(category);
+                    if (btn != null && defaultText != null) {
+                        btn.setText(defaultText + "  \u25BC");
+                    }
+                }
+                activeFilters.clear();
+                applyFilters();
+            });
+            chipRow.add(clearAllBtn);
+        }
+        
+        chipRow.revalidate();
+        chipRow.repaint();
     }
 
     private JPanel buildChip(String category, String value) {

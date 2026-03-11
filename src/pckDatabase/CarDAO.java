@@ -356,4 +356,24 @@ public class CarDAO {
         }
         return brands;
     }
+
+    // ====================================================
+    public List<String> getDistinctColors() {
+        List<String> colors = new ArrayList<>();
+        String sql = "SELECT DISTINCT color FROM cars WHERE color IS NOT NULL AND color != '' ORDER BY color ASC";
+
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                colors.add(rs.getString("color"));
+            }
+
+        } catch (SQLException e) {
+            System.err.println("[CarDAO] ERROR in getDistinctColors(): " + e.getMessage());
+            e.printStackTrace();
+        }
+        return colors;
+    }
 }

@@ -51,6 +51,11 @@ public class CarService {
         return carDAO.getDistinctBrands();
     }
 
+    /** Returns distinct color names from the cars table — used for dynamic dropdown */
+    public static List<String> getDistinctColors() {
+        return carDAO.getDistinctColors();
+    }
+
     // ====================================================
     //  CREATE
     // ====================================================
