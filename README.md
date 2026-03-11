@@ -37,7 +37,7 @@ This system allows customers to browse available cars and make reservations, dri
 | GUI Framework | Java Swing |
 | Database | MySQL |
 | JDBC Driver | mysql-connector-j-9.6.0 (included in `/lib`) |
-| IDE | IntelliJ IDEA / Eclipse |
+| IDE | VSCode |
 | Version Control | Git & GitHub |
 
 ---
