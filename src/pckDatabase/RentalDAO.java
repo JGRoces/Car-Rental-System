@@ -133,6 +133,24 @@ public class RentalDAO {
         }
     }
 
+    public boolean isCarAvailableForDates(int carId, java.time.LocalDate start, java.time.LocalDate end) {
+        String sql = "SELECT COUNT(*) FROM rentals WHERE car_id = ? "
+            + "AND status IN ('PENDING','ACTIVE') "
+            + "AND start_date < ? AND end_date > ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, carId);
+            pstmt.setDate(2, Date.valueOf(end));
+            pstmt.setDate(3, Date.valueOf(start));
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) return rs.getInt(1) == 0;
+        } catch (SQLException e) {
+            System.err.println("[RentalDAO] Error in isCarAvailableForDates: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     public boolean assignDriver(int rentalId, int driverId) {
         String sql = "UPDATE rentals SET driver_id = ? WHERE rental_id = ?";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();

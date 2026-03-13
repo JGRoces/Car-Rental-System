@@ -20,6 +20,10 @@ public class RentalService {
     }
 
     public static boolean bookRental(int customerId, int carId, LocalDate start, LocalDate end, BigDecimal dailyRate) {
+        if (!rentalDAO.isCarAvailableForDates(carId, start, end)) {
+            System.err.println("[RentalService] Car " + carId + " is not available for " + start + " to " + end);
+            return false;
+        }
         Rental rental = new Rental(customerId, carId, start, end);
         long days = DateUtil.calculateDays(start, end);
         if (days <= 0) days = 1;

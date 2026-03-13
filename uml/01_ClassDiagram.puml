@@ -1,0 +1,279 @@
+@startuml ClassDiagram
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 12
+skinparam packageFontSize 13
+skinparam ArrowColor #555555
+skinparam ClassBorderColor #888888
+skinparam ClassBackgroundColor #FAFAFA
+skinparam PackageBackgroundColor #F0F4FF
+
+package pckModels {
+
+    class User {
+        - int userId
+        - String fullName
+        - String email
+        - String password
+        - String role
+        + getUserId() : int
+        + getFullName() : String
+        + getEmail() : String
+        + getRole() : String
+    }
+
+    class Admin {
+        - int adminId
+        + getAdminId() : int
+    }
+
+    class Customer {
+        - int customerId
+        - String phone
+        - String photoPath
+        + getCustomerId() : int
+        + getPhone() : String
+    }
+
+    class Driver {
+        - int driverId
+        - String phone
+        - String licenseNumber
+        - String licenseExpiry
+        - String vehicleType
+        - String status
+        - String photoPath
+        - String verifiedAt
+        + {static} STATUS_PENDING : String
+        + {static} STATUS_VERIFIED : String
+        + {static} STATUS_REJECTED : String
+        + getDriverId() : int
+        + isPending() : boolean
+        + isVerified() : boolean
+        + isRejected() : boolean
+    }
+
+    class Car {
+        - int carId
+        - String brand
+        - String model
+        - int year
+        - String plateNumber
+        - String category
+        - String transmission
+        - String fuelType
+        - int seatCapacity
+        - BigDecimal dailyRate
+        - String status
+        - String imagePath
+        - String color
+        + getCarId() : int
+        + getDisplayName() : String
+        + getDailyRate() : BigDecimal
+    }
+
+    class Rental {
+        - int rentalId
+        - int customerId
+        - int carId
+        - int driverId
+        - LocalDate startDate
+        - LocalDate endDate
+        - BigDecimal totalAmount
+        - String status
+        + getRentalId() : int
+        + getDriverId() : int
+        + getStatus() : String
+    }
+
+    class Payment {
+        - int paymentId
+        - int rentalId
+        - BigDecimal amountPaid
+        - LocalDateTime paymentDate
+        - String paymentMethod
+        - String status
+        + getPaymentId() : int
+        + getRentalId() : int
+        + getStatus() : String
+    }
+
+    User <|-- Admin
+    User <|-- Customer
+    User <|-- Driver
+
+    Customer "1" --> "0..*" Rental : places
+    Car      "1" --> "0..*" Rental : assigned to
+    Driver   "1" --> "0..*" Rental : drives
+    Rental   "1" --> "0..1" Payment : has
+}
+
+package pckDatabase {
+
+    class DatabaseConnection {
+        - {static} String URL
+        - {static} String USER
+        - {static} String PASS
+        - {static} Connection sharedConnection
+        + {static} getInstance() : DatabaseConnection
+        + getConnection() : Connection
+        + closeConnection()
+    }
+
+    class UserDAO {
+        + getUserByEmailAndPassword(String, String) : User
+        + getUserByEmail(String) : User
+    }
+
+    class CustomerDAO {
+        + createAccount(Customer) : Customer
+        + getCustomerByUserId(int) : Customer
+        + getCustomerById(int) : Customer
+        + getAllCustomers() : List<Customer>
+        + emailExists(String) : boolean
+    }
+
+    class DriverDAO {
+        + createAccount(Driver) : Driver
+        + getDriversByStatus(String) : List<Driver>
+        + getDriverByUserId(int) : Driver
+        + getDriverById(int) : Driver
+        + updateStatus(int, String) : boolean
+        + emailExists(String) : boolean
+        + licenseExists(String) : boolean
+    }
+
+    class CarDAO {
+        + getAllCars() : List<Car>
+        + getAvailableCars() : List<Car>
+        + getAvailableCarsForDates(LocalDate, LocalDate) : List<Car>
+        + getCarById(int) : Car
+        + insertCar(Car) : int
+        + updateCar(Car) : boolean
+        + deleteCar(int) : boolean
+        + plateExists(String) : boolean
+        + getDistinctBrands() : List<String>
+        + getDistinctColors() : List<String>
+    }
+
+    class RentalDAO {
+        + getAllRentals() : List<Rental>
+        + getRentalsByCustomerId(int) : List<Rental>
+        + getRentalsByDriverId(int) : List<Rental>
+        + createRental(Rental) : boolean
+        + updateStatus(int, String) : boolean
+        + updateDatesAndStatus(...) : boolean
+        + assignDriver(int, int) : boolean
+        + isCarAvailableForDates(...) : boolean
+        + hasActiveRental(int) : boolean
+    }
+
+    class PaymentDAO {
+        + insertPayment(Payment) : int
+        + getAllPayments() : List<Payment>
+        + getPendingPayments() : List<Payment>
+        + approvePayment(int) : boolean
+        + refundPayment(int) : boolean
+        + getTotalRevenue() : BigDecimal
+    }
+
+    UserDAO     ..> DatabaseConnection : uses
+    CustomerDAO ..> DatabaseConnection : uses
+    DriverDAO   ..> DatabaseConnection : uses
+    CarDAO      ..> DatabaseConnection : uses
+    RentalDAO   ..> DatabaseConnection : uses
+    PaymentDAO  ..> DatabaseConnection : uses
+
+    UserDAO     ..> User     : maps
+    CustomerDAO ..> Customer : maps
+    DriverDAO   ..> Driver   : maps
+    CarDAO      ..> Car      : maps
+    RentalDAO   ..> Rental   : maps
+    PaymentDAO  ..> Payment  : maps
+}
+
+package pckServices {
+
+    class AuthService {
+        - {static} UserDAO userDAO
+        + {static} login(String, String) : User
+        + {static} logout()
+    }
+
+    class CustomerService {
+        - {static} CustomerDAO customerDAO
+        + {static} register(...) : RegisterResult
+        + {static} getMessage(RegisterResult) : String
+    }
+
+    class DriverService {
+        - {static} DriverDAO driverDAO
+        + {static} register(...) : RegisterResult
+        + {static} verify(int) : boolean
+        + {static} reject(int) : boolean
+    }
+
+    class CarService {
+        - {static} CarDAO carDAO
+        + {static} getAllCars() : List<Car>
+        + {static} getAvailableCars() : List<Car>
+        + {static} addCar(Car) : int
+        + {static} updateCar(Car) : boolean
+        + {static} deleteCar(int) : boolean
+        + {static} getDistinctBrands() : List<String>
+        + {static} getDistinctColors() : List<String>
+    }
+
+    class RentalService {
+        - {static} RentalDAO rentalDAO
+        - {static} PaymentDAO paymentDAO
+        + {static} bookRental(...) : boolean
+        + {static} cancelRental(int) : boolean
+        + {static} completeRental(int) : boolean
+        + {static} updateRentalStatus(int, String) : boolean
+        + {static} getCustomerRentals(int) : List<Rental>
+        + {static} getAllRentals() : List<Rental>
+        + {static} approvePayment(int) : boolean
+        + {static} getAllPayments() : List<Payment>
+        + {static} getPendingPayments() : List<Payment>
+    }
+
+    AuthService     ..> UserDAO     : delegates
+    CustomerService ..> CustomerDAO : delegates
+    DriverService   ..> DriverDAO   : delegates
+    CarService      ..> CarDAO      : delegates
+    RentalService   ..> RentalDAO   : delegates
+    RentalService   ..> PaymentDAO  : delegates
+}
+
+package pckUtils {
+
+    class SessionManager {
+        - {static} User currentUser
+        + {static} setCurrentUser(User)
+        + {static} getCurrentUser() : User
+        + {static} isLoggedIn() : boolean
+        + {static} clearSession()
+    }
+
+    class AppConfig {
+        + {static} vehiclePhoto(int, String) : String
+        + {static} saveVehiclePhoto(File, int, String) : String
+        + {static} customerPhoto(int) : String
+        + {static} init()
+    }
+
+    class CalendarPicker {
+        - LocalDate selected
+        - Runnable onChange
+        + getLocalDate() : LocalDate
+        + getFormattedDate() : String
+        + setOnChange(Runnable)
+    }
+
+    class DateUtil {
+        + {static} calculateDays(LocalDate, LocalDate) : long
+    }
+}
+
+@enduml

@@ -358,6 +358,33 @@ public class CarDAO {
     }
 
     // ====================================================
+    //  READ — Get available cars for a specific date range
+    //  Excludes cars with overlapping PENDING or ACTIVE rentals
+    // ====================================================
+    public List<Car> getAvailableCarsForDates(java.time.LocalDate start, java.time.LocalDate end) {
+        List<Car> cars = new ArrayList<>();
+        String sql = "SELECT * FROM cars WHERE status = 'AVAILABLE' "
+            + "AND car_id NOT IN ("
+            + "  SELECT car_id FROM rentals "
+            + "  WHERE status IN ('PENDING','ACTIVE') "
+            + "  AND start_date < ? AND end_date > ?"
+            + ") ORDER BY brand, model";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDate(1, java.sql.Date.valueOf(end));
+            ps.setDate(2, java.sql.Date.valueOf(start));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) cars.add(mapRow(rs));
+            }
+            System.out.println("[CarDAO] getAvailableCarsForDates(" + start + " to " + end + ") → " + cars.size() + " rows");
+        } catch (SQLException e) {
+            System.err.println("[CarDAO] ERROR in getAvailableCarsForDates(): " + e.getMessage());
+            e.printStackTrace();
+        }
+        return cars;
+    }
+
+    // ====================================================
     public List<String> getDistinctColors() {
         List<String> colors = new ArrayList<>();
         String sql = "SELECT DISTINCT color FROM cars WHERE color IS NOT NULL AND color != '' ORDER BY color ASC";

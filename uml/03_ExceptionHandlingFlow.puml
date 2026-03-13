@@ -1,0 +1,65 @@
+@startuml ExceptionHandlingFlow
+
+skinparam activityFontSize 12
+skinparam ArrowColor #555555
+title Exception Handling Flow — Car Rental System
+
+|GUI Layer|
+start
+:User triggers action\n(login / book / save);
+
+|Service Layer|
+:Service validates input;
+if (Input invalid?) then (yes)
+    :Return error result\nor show warning dialog;
+    stop
+endif
+
+|DAO Layer|
+:DAO calls DatabaseConnection\n.getInstance().getConnection();
+
+if (Connection fails?) then (yes)
+    :DatabaseConnection throws\nRuntimeException\n"Database connection unavailable";
+    |GUI Layer|
+    :JOptionPane shows\n"Connection error" to user;
+    stop
+endif
+
+:Execute SQL via\nPreparedStatement;
+
+if (SQLException?) then (yes)
+    :Log: System.err.println\n+ e.printStackTrace();
+    if (Transaction active?) then (yes)
+        :connection.rollback();
+        note right
+            CustomerDAO.createAccount
+            DriverDAO.createAccount
+        end note
+    endif
+    :Return null / false / -1\nto Service layer;
+    |Service Layer|
+    :Return DATABASE_ERROR\nor false to GUI;
+    |GUI Layer|
+    :Show error dialog\nto user;
+    stop
+endif
+
+:Return result to Service;
+
+|Service Layer|
+:Apply business logic\n(availability check,\ndate validation);
+
+if (Business rule violated?) then (yes)
+    :Return false / error enum;
+    |GUI Layer|
+    :Show specific message\n(e.g. "Car not available\nfor selected dates");
+    stop
+endif
+
+:Return success to GUI;
+
+|GUI Layer|
+:Show success message\nRefresh UI;
+stop
+
+@enduml

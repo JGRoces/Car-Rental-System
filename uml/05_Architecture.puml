@@ -1,0 +1,77 @@
+@startuml Architecture
+
+skinparam packageFontSize 13
+skinparam ArrowColor #3B82F6
+skinparam PackageBorderColor #888888
+title Layered Architecture — Car Rental System
+
+package "Presentation Layer (GUI)" #E0F2FE {
+    [LoginGUI]
+    [CustomerDashboardGUI]
+    [AdminDashboardGUI]
+    [DriverDashboardGUI]
+    [BrowseCarsGUI]
+    [MakeReservationPanel]
+}
+
+package "Service Layer (Business Logic)" #DCFCE7 {
+    [AuthService]
+    [CustomerService]
+    [DriverService]
+    [CarService]
+    [RentalService]
+}
+
+package "DAO Layer (Data Access)" #FEF9C3 {
+    [UserDAO]
+    [CustomerDAO]
+    [DriverDAO]
+    [CarDAO]
+    [RentalDAO]
+    [PaymentDAO]
+}
+
+package "Database" #FEE2E2 {
+    database "MySQL\ncar_rental_db" {
+        [users]
+        [customers]
+        [drivers]
+        [cars]
+        [rentals]
+        [payments]
+    }
+}
+
+package "Utilities" #F3E8FF {
+    [SessionManager]
+    [AppConfig]
+    [CalendarPicker]
+    [UIAssets]
+    [DatabaseConnection]
+}
+
+[LoginGUI]             --> [AuthService]
+[CustomerDashboardGUI] --> [RentalService]
+[AdminDashboardGUI]    --> [CarService]
+[AdminDashboardGUI]    --> [RentalService]
+[DriverDashboardGUI]   --> [RentalService]
+[BrowseCarsGUI]        --> [CarService]
+[MakeReservationPanel] --> [RentalService]
+
+[AuthService]     --> [UserDAO]
+[CustomerService] --> [CustomerDAO]
+[DriverService]   --> [DriverDAO]
+[CarService]      --> [CarDAO]
+[RentalService]   --> [RentalDAO]
+[RentalService]   --> [PaymentDAO]
+
+[UserDAO]     --> [DatabaseConnection]
+[CustomerDAO] --> [DatabaseConnection]
+[DriverDAO]   --> [DatabaseConnection]
+[CarDAO]      --> [DatabaseConnection]
+[RentalDAO]   --> [DatabaseConnection]
+[PaymentDAO]  --> [DatabaseConnection]
+
+[DatabaseConnection] --> [MySQL\ncar_rental_db]
+
+@enduml

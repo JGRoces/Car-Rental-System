@@ -154,6 +154,8 @@ public class AdminUIHelper {
         if (icon != null) {
             btn.setIcon(icon);
             btn.setIconTextGap(7);
+            // Recalculate preferred width now that icon is set
+            btn.setPreferredSize(new Dimension(btn.getPreferredSize().width + icon.getIconWidth() + 7, 40));
         }
         return btn;
     }

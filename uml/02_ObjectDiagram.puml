@@ -1,0 +1,66 @@
+@startuml ObjectDiagram
+
+skinparam objectAttributeIconSize 0
+skinparam objectFontSize 12
+title Object Diagram — Customer Books Toyota VIOS with Driver
+
+object "juan : Customer" as juan {
+    userId = 2
+    customerId = 1
+    fullName = "Juan Dela Cruz"
+    email = "juan@email.com"
+    role = "CUSTOMER"
+    phone = "09171234567"
+}
+
+object "vios : Car" as vios {
+    carId = 1
+    brand = "Toyota"
+    model = "VIOS"
+    year = 2024
+    plateNumber = "ABC-1234"
+    category = "Sedan"
+    dailyRate = 1600.00
+    status = "RENTED"
+}
+
+object "pedro : Driver" as pedro {
+    userId = 5
+    driverId = 1
+    fullName = "Pedro Santos"
+    licenseNumber = "N01-23-456789"
+    vehicleType = "Sedan"
+    status = "VERIFIED"
+}
+
+object "rental1 : Rental" as rental {
+    rentalId = 1
+    customerId = 1
+    carId = 1
+    driverId = 1
+    startDate = 2026-03-01
+    endDate = 2026-03-05
+    totalAmount = 8000.00
+    status = "ACTIVE"
+}
+
+object "payment1 : Payment" as payment {
+    paymentId = 1
+    rentalId = 1
+    amountPaid = 8000.00
+    paymentMethod = "CASH"
+    status = "PAID"
+}
+
+object "session : SessionManager" as session {
+    currentUser = juan
+    isLoggedIn = true
+}
+
+juan    --> rental  : places
+vios    --> rental  : assigned to
+pedro   --> rental  : drives
+rental  --> payment : paid via
+session --> juan    : tracks
+
+@enduml

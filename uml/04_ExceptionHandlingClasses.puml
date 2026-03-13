@@ -1,0 +1,118 @@
+@startuml ExceptionHandlingClasses
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 11
+title Exception Handling — Class Level Summary
+
+class DatabaseConnection {
+    + getConnection() : Connection
+    ..throws..
+    RuntimeException : "Driver not found"
+    RuntimeException : "Connection unavailable"
+}
+
+class CustomerDAO {
+    + createAccount(Customer) : Customer
+    ..catches..
+    SQLException -> rollback + log
+    ..finally..
+    connection.setAutoCommit(true)
+}
+
+class DriverDAO {
+    + createAccount(Driver) : Driver
+    ..catches..
+    SQLException -> rollback + log
+    ..finally..
+    connection.setAutoCommit(true)
+    ---
+    + convertDateToSql(String) : String
+    ..catches..
+    Exception -> log bad input, return as-is
+}
+
+class RentalDAO {
+    + createRental(Rental) : boolean
+    + updateStatus(int, String) : boolean
+    + isCarAvailableForDates(...) : boolean
+    ..catches..
+    SQLException -> log + printStackTrace
+    ..returns..
+    false / empty list on failure
+}
+
+class PaymentDAO {
+    + insertPayment(Payment) : int
+    + approvePayment(int) : boolean
+    ..catches..
+    SQLException -> log + printStackTrace
+    ..returns..
+    -1 / false on failure
+}
+
+class AppConfig {
+    + copyFile(File, String) : String
+    ..catches..
+    IOException -> log source + dest path
+    ..returns..
+    null on failure
+    ---
+    + saveVehiclePhoto(...) : String
+    ..handles..
+    f.delete() failure -> log warning
+}
+
+class VehiclesTab {
+    + loadScaled(String, int, int) : Image
+    ..catches..
+    InterruptedException -> restore interrupt flag
+    IOException -> log filename
+    ..returns..
+    null on failure
+}
+
+class BrowseCarsGUI {
+    + loadImageRaw(String) : BufferedImage
+    ..catches..
+    InterruptedException -> restore interrupt flag
+    IOException -> log filename
+    ..returns..
+    null on failure
+}
+
+class SettingsPanel {
+    + isDatabaseConnected() : boolean
+    ..catches..
+    SQLException -> log + return false
+}
+
+class DriversTab {
+    + loadCircularPhoto(...) : ImageIcon
+    ..catches..
+    IOException -> log + return null
+}
+
+class CustomersTab {
+    + loadCircularPhoto(...) : ImageIcon
+    ..catches..
+    IOException -> log + return null
+}
+
+class RemoveVehiclePanel {
+    + paintComponent(Graphics)
+    ..catches..
+    IOException -> log filename
+}
+
+class CustomerSignUpGUI {
+    + photo preview
+    ..catches..
+    Exception -> log + show fallback
+}
+
+DatabaseConnection <.. CustomerDAO : uses
+DatabaseConnection <.. DriverDAO   : uses
+DatabaseConnection <.. RentalDAO   : uses
+DatabaseConnection <.. PaymentDAO  : uses
+
+@enduml

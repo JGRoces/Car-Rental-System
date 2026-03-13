@@ -40,6 +40,7 @@ import javax.swing.border.MatteBorder;
 
 import pckModels.Car;
 import pckServices.CarService;
+import pckUtils.CalendarPicker;
 import pckUtils.UIAssets;
 
 public class BrowseCarsGUI extends JPanel {
@@ -62,6 +63,8 @@ public class BrowseCarsGUI extends JPanel {
     private JPanel     selectedCardPanel;
     private JPanel     chipRow;
     private Runnable   onRentNow;
+    private CalendarPicker startDatePicker;
+    private CalendarPicker endDatePicker;
 
     public void setOnRentNow(Runnable r) { this.onRentNow = r; }
     public Car getSelectedCar()          { return selectedCar; }
@@ -169,6 +172,28 @@ public class BrowseCarsGUI extends JPanel {
             v -> { if (v.equals("All Colors")) { activeFilters.remove("Color"); applyFilters(); } else filterByColor(v); });
         filterPillButtons.put("Color", findPillButton(colorPanel));
         filterRow.add(colorPanel);
+
+        // Date range pickers
+        startDatePicker = new CalendarPicker(java.time.LocalDate.now(), this::applyFilters);
+        endDatePicker   = new CalendarPicker(java.time.LocalDate.now().plusDays(1), this::applyFilters);
+        startDatePicker.setPreferredSize(new Dimension(120, 34));
+        endDatePicker.setPreferredSize(new Dimension(120, 34));
+        startDatePicker.setToolTipText("Filter by start date");
+        endDatePicker.setToolTipText("Filter by end date");
+
+        JPanel datePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        datePanel.setOpaque(false);
+        JLabel fromLbl = new JLabel("From:");
+        fromLbl.setFont(UIAssets.FONT_SMALL);
+        fromLbl.setForeground(UIAssets.getTextSecondary());
+        JLabel toLbl = new JLabel("To:");
+        toLbl.setFont(UIAssets.FONT_SMALL);
+        toLbl.setForeground(UIAssets.getTextSecondary());
+        datePanel.add(fromLbl);
+        datePanel.add(startDatePicker);
+        datePanel.add(toLbl);
+        datePanel.add(endDatePicker);
+        filterRow.add(datePanel);
 
         JButton refreshBtn = new JButton("Refresh") {
             @Override protected void paintComponent(Graphics g) {
@@ -1027,7 +1052,18 @@ public class BrowseCarsGUI extends JPanel {
     public String getActiveFilterValue()               { return activeFilters.isEmpty() ? null : activeFilters.values().iterator().next(); }
 
     private void applyFilters() {
-        List<Car> filtered = allCars.stream().filter(c -> {
+        java.time.LocalDate start = startDatePicker != null ? startDatePicker.getLocalDate() : null;
+        java.time.LocalDate end   = endDatePicker   != null ? endDatePicker.getLocalDate()   : null;
+
+        // Load cars filtered by date range if both dates are valid
+        List<Car> base;
+        if (start != null && end != null && end.isAfter(start)) {
+            base = new pckDatabase.CarDAO().getAvailableCarsForDates(start, end);
+        } else {
+            base = allCars;
+        }
+
+        List<Car> filtered = base.stream().filter(c -> {
             for (java.util.Map.Entry<String, String> f : activeFilters.entrySet()) {
                 boolean match = switch (f.getKey()) {
                     case "Type"         -> c.getCategory().equalsIgnoreCase(f.getValue());

@@ -322,8 +322,8 @@ public class MakeReservationPanel extends JPanel {
         JPanel grid = new JPanel(new GridLayout(2, 2, 12, 12));
         grid.setBackground(CLR_WHITE);
 
-        pickupDatePicker = new CalendarPicker(java.time.LocalDate.now(), this::refreshSummary);
-        returnDatePicker = new CalendarPicker(java.time.LocalDate.now(), this::refreshSummary);
+        pickupDatePicker = new CalendarPicker(java.time.LocalDate.now(), () -> { refreshCarList(); refreshSummary(); });
+        returnDatePicker = new CalendarPicker(java.time.LocalDate.now(), () -> { refreshCarList(); refreshSummary(); });
 
         String[] times  = buildTimeOptions();
         pickupTimeCombo = new JComboBox<>(times);
@@ -812,6 +812,33 @@ public class MakeReservationPanel extends JPanel {
         sumDurationLbl.setText(computeDurationLabel());
         sumRateLbl.setText(getSelectedCarRate());
         sumTotalLbl.setText(computeTotal());
+    }
+
+    // ====================================================
+    //  REFRESH CAR LIST BY DATE
+    // ====================================================
+    private void refreshCarList() {
+        java.time.LocalDate start = pickupDatePicker.getLocalDate();
+        java.time.LocalDate end   = returnDatePicker.getLocalDate();
+        String currentSelection   = (String) carCombo.getSelectedItem();
+        if (end.isAfter(start)) {
+            availableCars = carDAO.getAvailableCarsForDates(start, end);
+        } else {
+            availableCars = carDAO.getAvailableCars();
+        }
+        carCombo.removeAllItems();
+        carCombo.addItem("\u2014 Select a Car \u2014");
+        for (Car car : availableCars) carCombo.addItem(car.getDisplayName());
+        // Restore previous selection if still available
+        if (currentSelection != null) {
+            for (int i = 0; i < carCombo.getItemCount(); i++) {
+                if (currentSelection.equals(carCombo.getItemAt(i))) {
+                    carCombo.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
+        updateCarDetails();
     }
 
     // ====================================================
