@@ -4,7 +4,7 @@ This document outlines the rules and workflow for our group to follow when contr
 
 ---
 
-## 🔀 Daily Git Workflow
+##  Daily Git Workflow
 
 Always follow this order every coding session:
 
@@ -28,7 +28,7 @@ Always follow this order every coding session:
 
 ---
 
-## ✍️ Commit Message Format
+##  Commit Message Format
 
 Use a simple prefix so the history is easy to read:
 
@@ -50,7 +50,7 @@ docs: update README setup instructions
 
 ---
 
-## 📂 File Ownership (Assign as a Group)
+##  File Ownership (Assign as a Group)
 
 To avoid merge conflicts, each member should own specific files. Discuss and fill this in together:
 
@@ -67,7 +67,7 @@ To avoid merge conflicts, each member should own specific files. Discuss and fil
 
 ---
 
-## 🚫 What NOT to Push
+##  What NOT to Push
 
 - Your MySQL username and password
 - IDE-specific config folders (`.idea/`, `.eclipse/`)
@@ -78,7 +78,7 @@ These are already handled by `.gitignore`, but be mindful.
 
 ---
 
-## ⚠️ If You Get a Merge Conflict
+##  If You Get a Merge Conflict
 
 Don't panic. It means two people edited the same file. Here's what to do:
 
@@ -90,7 +90,7 @@ Don't panic. It means two people edited the same file. Here's what to do:
 
 ---
 
-## 💬 Communication
+##  Communication
 
 Always announce in the group chat:
 - What file you are currently working on
