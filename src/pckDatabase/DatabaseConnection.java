@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 public class DatabaseConnection {
 
-    private static final String URL  = "jdbc:mysql://localhost:3306/car_rental_db?autoReconnect=true&useSSL=false&serverTimezone=UTC";
+    private static final String URL  = "jdbc:mysql://localhost:3306/car_rental_db";
     private static final String USER = "carrentaluser";
     private static final String PASS = "carrentalpass";
 

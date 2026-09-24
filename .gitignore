@@ -15,6 +15,7 @@
 /build/
 /target/
 /bin/
+/Deliverables/
 
 # --- VSCode ---
 .vscode/
